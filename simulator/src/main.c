@@ -1,4 +1,8 @@
+#ifdef __APPLE__
+#define _DARWIN_C_SOURCE
+#else
 #define _POSIX_C_SOURCE 200809L
+#endif
 
 /*
  * Copyright (c) Meta Platforms, Inc. and affiliates.
@@ -49,6 +53,7 @@ static bool apply_setting(const char *, const char *, bool);
 static bool run_scenario(const char *, bool);
 static volatile sig_atomic_t s_quit;
 static int64_t s_last_poll;
+static bool s_live_state;
 static time_t s_state_mtime;
 static long s_state_nsec;
 
@@ -158,7 +163,7 @@ static void render_for(uint32_t duration_ms, bool real_time)
             step = FRAME_STEP_MS;
         }
         sim_time_advance_us((int64_t)step * 1000);
-        poll_live_state();
+        if (s_live_state) poll_live_state();
         lv_timer_handler();
         if (real_time) {
             SDL_Delay(step);
@@ -610,6 +615,16 @@ int main(int argc, char **argv)
         fprintf(stderr, "UI initialization failed\n");
         return 1;
     }
+    if (headless) {
+        /* Dummy SDL desktops have an arbitrary size; capture the board size. */
+        SDL_Window *window = lv_sdl_window_get_window(sim_board_display());
+        if (window) {
+            SDL_SetWindowFullscreen(window, 0);
+            SDL_SetWindowSize(window, muse_board->width, muse_board->height);
+        }
+    }
+    /* Scripted previews must not be overwritten by the running backend. */
+    s_live_state = !headless && !scenario;
     SDL_AddEventWatch(event_watch, NULL);
     s_ready = true;
     select_mode(MUSE_MODE_BOOT);

@@ -24,7 +24,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-WIDTH = HEIGHT = 412
+WIDTH, HEIGHT = 480, 320
 HERE = Path(__file__).resolve().parent
 SCENARIOS = tuple(sorted((HERE / "scenarios").glob("*.txt")))
 

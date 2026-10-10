@@ -77,6 +77,8 @@ The included device photo shows the touch interaction and listening state. These
 
 The bridge uses SDK internals and cloud chat endpoints; upstream/cloud changes may require updates. No offline mode or service quota guarantees are provided.
 
+The published bundle also passed its backend tests and a fresh macOS ARM64 renderer build/headless test run (2026-10-10). The renderer test runs scripted scenarios without polling the live board backend. These host checks do not add physical audio validation.
+
 Local backend tests (without hardware/network):
 
 ```sh
