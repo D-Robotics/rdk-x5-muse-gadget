@@ -1,0 +1,9 @@
+# Preserve the distribution's ALSA, Bluetooth and desktop integration.
+.include /etc/pulse/default.pa
+
+# Automatic mode includes connected hardware outputs and handles hotplug.
+.ifexists module-combine-sink.so
+.nofail
+load-module module-combine-sink sink_name=muse_output sink_properties=device.description=Muse-Speakers adjust_time=1
+.fail
+.endif

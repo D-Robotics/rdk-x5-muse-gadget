@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Muse
+Comment=Open Muse on the RDK X5 display
+Exec=/opt/muse-ui/start-display.sh
+Icon=/opt/muse-ui/assets/muse.svg
+Terminal=false
+Categories=Utility;
+StartupNotify=false

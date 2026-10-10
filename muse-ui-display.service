@@ -1,0 +1,19 @@
+[Unit]
+Description=Muse avatar and captions on RDK X5 display
+Wants=muse-ui.service
+After=lightdm.service muse-ui.service
+
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/sunrise/.Xauthority
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+WorkingDirectory=/opt/muse-ui
+ExecStart=/opt/muse-ui/start-display.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target

@@ -1,0 +1,5 @@
+Derived from facebookincubator/muse-gadget-sdk, snapshot 74a5e2d.
+Copyright (c) Meta Platforms, Inc. and affiliates.
+RDK X5 display, chat/audio bridge and launcher adaptations by Shockley.
+This is an independent community project and is not an official Meta or D-Robotics product.
+The GNU Unifont-derived CJK font retains its separate font license; see THIRD_PARTY.md.

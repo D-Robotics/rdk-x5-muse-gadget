@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Muse
+Exec=/opt/muse-ui/start-display.sh
+Icon=/opt/muse-ui/assets/muse.svg
+Terminal=false
+StartupNotify=false
+OnlyShowIn=XFCE;
+Hidden=false

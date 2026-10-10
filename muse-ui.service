@@ -1,0 +1,23 @@
+[Unit]
+Description=Muse RDK X5 chat and audio bridge
+Wants=network-online.target musegadget.service
+After=network-online.target musegadget.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/muse-ui
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/opt/muse-ui/sdk
+Environment=MUSE_UI_AUDIO=on
+Environment=MUSE_UI_MIRROR=0
+Environment=PULSE_SOURCE=alsa_input.platform-snd0.stereo-fallback
+Environment=PULSE_SINK=muse_output
+ExecStart=/opt/muse-ui/venv/bin/python /opt/muse-ui/backend.py
+RuntimeDirectory=muse-ui
+RuntimeDirectoryMode=0755
+Restart=on-failure
+RestartSec=5
+UMask=0022
+
+[Install]
+WantedBy=multi-user.target
