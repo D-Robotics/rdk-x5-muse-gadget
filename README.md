@@ -1,85 +1,88 @@
 # Muse Gadget on RDK X5
 
-在 RDK X5 上运行 Muse Linux Gadget，并把 ESP32 风格的动画头像、字幕和触摸交互放到 480×320 小屏上。独立社区实现，基于 Meta 的 [Muse Gadget SDK](https://github.com/facebookincubator/muse-gadget-sdk)，不代表官方板卡适配。
+A touchscreen interface for Muse on the RDK X5, with an animated pixel avatar, chat captions and hold-to-talk input. It reuses the ESP32 interface from Meta's [Muse Gadget SDK](https://github.com/facebookincubator/muse-gadget-sdk) and runs on a 480×320 display.
 
-![Muse UI on X5](docs/images/rdk-x5-muse-ui.png)
-![Touch interaction, extracted from a device demo](docs/images/rdk-x5-touch-demo.jpg)
+<img src="docs/images/rdk-x5-muse-device.jpg" alt="Muse running on an RDK X5 touchscreen" width="480">
 
-## Architecture
+The screen runs a native LVGL/SDL frontend. A Python backend sends messages to Muse and passes replies back to the screen. The official `musegadget` service handles pairing and board commands. Speech output uses Edge TTS and PulseAudio.
 
-```text
-Touch screen → LVGL / SDL native UI → Python chat/audio bridge
-                                         ↕ encrypted Muse connection
-                                      Muse cloud
-Headset mic → PulseAudio / PCM voice note ↗     ↘ text → Edge TTS → PulseAudio
-Official musegadget.service handles pairing and board commands separately.
-```
+Inference runs in Muse's cloud. The X5 handles the interface, device commands and audio. Internet access is required for Muse and speech synthesis.
 
-X5 runs the device client, display and audio plumbing. Model inference happens in Muse's cloud; this project does not run an LLM on the X5 BPU. The frontend uses Muse's original pixel avatar and CJK caption font. English controls, original-language captions, no operation hints. TTS is provided by `edge-tts`, an additional online dependency.
+## Setup
 
-## Tested setup
+Tested on:
 
-- RDK X5, Ubuntu 22.04.5 ARM64, XFCE/Xorg desktop.
-- A working 480×320 SPI touch display; this project does not install screen or touch drivers.
-- Default desktop account `sunrise`, UID 1000, X display `:0`.
-- Already installed and paired official Linux SDK, with state under `/var/lib/musegadget`.
-- Internet access to Muse, dependency downloads and Edge TTS.
+- RDK X5 running Ubuntu 22.04.5 ARM64 with XFCE/Xorg.
+- A 480×320 SPI touchscreen with working display and touch drivers.
+- Desktop account `sunrise`, UID 1000, display `:0`.
+- The official Linux SDK, already installed and paired with Muse.
 
-This installer targets that setup. Other usernames, display sessions, HDMI resolutions and audio devices require editing the launcher, systemd units and installer paths. It is not a generic board-image installer.
+The installer uses these account and display settings. For a different username, display resolution or audio device, adjust the launcher, service files and installer paths first.
 
-## Install on X5
+## Install
 
-First follow the [official Linux SDK setup](https://github.com/facebookincubator/muse-gadget-sdk/tree/main/linux), obtain your own SDK token and pair with the Muse app. Account access/developer mode must be available. Keep tokens on your device; none are included here.
+Follow the [Linux SDK instructions](https://github.com/facebookincubator/muse-gadget-sdk/tree/main/linux) to install the SDK and pair the board. You need your own SDK token and access to developer mode in the Muse app.
 
-Then, on the board:
+Then run these commands on the X5:
 
 ```sh
 sudo apt-get update
 sudo apt-get install -y git
 git clone https://github.com/shockley6668/rdk-x5-muse-gadget.git
 cd rdk-x5-muse-gadget
-# Review the script before installing.
+# Read install.sh before running it.
 sudo bash install.sh
 ```
 
-Installs the app under `/opt/muse-ui`, builds the native renderer and runs the backend tests. Adds a Muse desktop icon and XFCE autostart entry. Enables `muse-ui.service` for the chat/audio backend, preserving the official `musegadget.service` and its pairing. The UI launches after XFCE is ready. The installer also configures a PulseAudio combined output and restarts the desktop user's PulseAudio service, interrupting current playback.
+The installer builds the frontend, runs the backend tests and installs the app in `/opt/muse-ui`. It adds a desktop shortcut and an XFCE autostart entry, then enables `muse-ui.service`. The existing SDK service and pairing stay in place.
 
-The backend currently runs as root so it can read the existing root-owned SDK pairing and contact the desktop audio session. Local input is restricted to root and the `sunrise` group, but captions are written to a world-readable state file in `/run/muse-ui`. Deploy on a trusted, single-user board. Pairing/token files are never copied into this repository or rewritten by the UI.
+It also configures a PulseAudio combined output and restarts the desktop user's audio service. This interrupts any current playback.
 
-## Use
+The backend runs as root to read the SDK's pairing files and connect to the desktop audio session. Its input socket is accessible to root and the `sunrise` group. Captions in `/run/muse-ui/state` are readable by other local users. This setup is intended for a trusted, single-user board.
 
-- Hold the avatar while speaking; release to send a voice note. Brief taps are discarded.
-- Speaker button toggles mute.
-- **Desktop** or **Esc** closes the frontend and returns to Ubuntu. The chat backend keeps running.
-- Double-click **Muse** on the desktop to reopen. Repeated launches focus the existing window.
+## Controls
 
-The launcher waits for the window manager and desktop to avoid an invisible window at boot. SPI refresh and avatar animation are capped at 8 fps to keep the desktop responsive. The old system-level display service stays disabled; normal autostart is managed by XFCE.
+- Hold the avatar to record; release to send. Brief taps are ignored.
+- Tap the speaker button to mute or unmute.
+- Tap **Desktop** or press **Esc** to close the window. The backend stays connected.
+- Double-click **Muse** on the desktop to reopen it. If the window is already running, the launcher brings it forward.
+
+The frontend starts after the XFCE window manager and desktop are ready. This avoids a window hidden behind the desktop at boot. Display refresh and avatar animation are limited to 8 fps for the SPI screen.
 
 ## Audio
 
-The deployed profile uses `PULSE_SOURCE=alsa_input.platform-snd0.stereo-fallback` and `PULSE_SINK=muse_output` in `muse-ui.service`. Use `pactl list short sources` and `pactl list short sinks` in the desktop user's session to check your hardware names.
+The service uses these PulseAudio devices:
 
-A headset microphone requires compatible wiring and codec routing; a playback-only headphone cannot record. Bluetooth pairing is performed separately in Ubuntu. `pulse-default.pa` defines an automatic combine sink for connected hardware outputs, intended for simultaneous jack/Bluetooth playback. Output availability, latency, volume and microphone quality depend on the actual devices. `MUSE_UI_MIRROR=0` disables the optional ESP32 chat mirror.
+```ini
+PULSE_SOURCE=alsa_input.platform-snd0.stereo-fallback
+PULSE_SINK=muse_output
+```
 
-Chinese/English are suggested in the voice-note prompt. This is a language hint, not a guaranteed ASR language whitelist; short or noisy recordings can still be misrecognized.
+Check your device names from a terminal in the desktop session:
 
-## Validation and limits
+```sh
+pactl list short sources
+pactl list short sinks
+```
 
-Recorded board checks:
+A headset microphone needs compatible wiring and codec routing. Pair Bluetooth speakers through Ubuntu before using them. The `muse_output` combine sink routes playback to connected hardware outputs, including the headphone jack and Bluetooth speakers. Latency, volume and recording quality depend on the devices.
 
-- ARM64 native build and live cloud text response.
-- Synthetic Mandarin voice upload with the expected cloud reply; TTS generation/decoding and software playback command succeeded.
-- Touch mute/unmute, reconnect after backend restart.
-- Desktop/Esc exit and desktop icon reopening, no duplicate UI processes.
-- Minimized-window recovery, repeated close/reopen cycles, and a real board reboot with XFCE autostart (2026-10-09).
+The voice-note prompt asks Muse to interpret Mandarin and English. This is a language hint; short or noisy recordings can still be misrecognized. Captions retain the reply's language, and the controls are in English. The optional ESP32 chat mirror is disabled by default (`MUSE_UI_MIRROR=0`).
 
-The included device photo shows the touch interaction and listening state. These checks do not establish microphone recording quality or sound heard simultaneously from the headset and Bluetooth speaker; those physical checks remain to be completed.
+## Testing
 
-The bridge uses SDK internals and cloud chat endpoints; upstream/cloud changes may require updates. No offline mode or service quota guarantees are provided.
+Board checks completed:
 
-The published bundle also passed its backend tests and a fresh macOS ARM64 renderer build/headless test run (2026-10-10). The renderer test runs scripted scenarios without polling the live board backend. These host checks do not add physical audio validation.
+- ARM64 build and live Muse text replies.
+- Synthetic Mandarin voice upload with the expected reply.
+- TTS generation, decoding and successful software playback commands.
+- Touch mute/unmute and reconnection after a backend restart.
+- Window close/reopen, minimized-window recovery and repeated launches without duplicate processes.
+- XFCE autostart after a board reboot on October 9, 2026.
 
-Local backend tests (without hardware/network):
+Physical microphone quality and audible playback from the headset and Bluetooth speaker together still need testing.
+
+The backend tests and a fresh macOS ARM64 build with headless renderer checks passed on October 10, 2026. To run the backend tests locally:
 
 ```sh
 python3 -m venv .venv
@@ -87,7 +90,9 @@ python3 -m venv .venv
 PYTHONPATH=sdk .venv/bin/python -m unittest test_backend -v
 ```
 
-Renderer build and headless tests: see [simulator/README.md](simulator/README.md).
+See [simulator/README.md](simulator/README.md) for renderer build and test commands. Headless tests use scripted scenarios and do not contact Muse or test audio hardware.
+
+The bridge uses SDK internals and cloud chat endpoints, so changes to either may require updates.
 
 ## Troubleshooting
 
@@ -98,8 +103,8 @@ tail -30 /home/sunrise/.cache/muse-ui/launcher.log
 python3 /opt/muse-ui/send.py 'Hello, please reply briefly.'
 ```
 
-Logs and captions can contain conversation text. Redact them before sharing. A working internet connection, DNS and correct system time are prerequisites for cloud connections.
+For connection failures, check the network, DNS and system clock. Logs and captions may contain conversation text; remove it before sharing them.
 
-## License and attribution
+## License
 
-Apache-2.0 for the code; original Meta notices are preserved. GNU Unifont has a separate font license. See [LICENSE](LICENSE), [NOTICE](NOTICE), and [THIRD_PARTY.md](THIRD_PARTY.md).
+Code is licensed under Apache-2.0, with the original Meta notices retained. The GNU Unifont-derived font has a separate license. See [LICENSE](LICENSE), [NOTICE](NOTICE) and [THIRD_PARTY.md](THIRD_PARTY.md).
