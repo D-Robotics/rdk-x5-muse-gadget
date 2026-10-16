@@ -2,7 +2,7 @@
 
 A touchscreen interface for Muse on the RDK X5, with an animated pixel avatar, chat captions and hold-to-talk input. It reuses the ESP32 interface from Meta's [Muse Gadget SDK](https://github.com/facebookincubator/muse-gadget-sdk) and runs on a 480×320 display.
 
-<img src="docs/images/rdk-x5-muse-device.jpg" alt="Muse running on an RDK X5 touchscreen" width="480">
+<img src="docs/images/rdk-x5-muse-cad-v04.png" alt="V04 CAD enclosure preview for Muse on RDK X5" width="640">
 
 The screen runs a native LVGL/SDL frontend. A Python backend sends messages to Muse and passes replies back to the screen. The official `musegadget` service handles pairing and board commands. Speech output uses Edge TTS and PulseAudio.
 
