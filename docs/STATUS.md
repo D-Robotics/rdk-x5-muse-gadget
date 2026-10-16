@@ -8,8 +8,9 @@ connection or deployment is part of this update.
 - LVGL/SDL Muse avatar UI with captions, hold-to-talk, mute and desktop close/reopen.
 - Python chat/audio bridge, Muse Linux SDK integration, Edge TTS, PulseAudio routing,
   desktop shortcut and XFCE autostart.
-- Earlier ST7796S kernel DRM + GT911 touch setup, now documented with corrected
-  physical pin numbering. Source overlays and firmware generator are included.
+- ST7796S kernel DRM + GT911 touch quick installer for kernel 6.1.83 / CS1 wiring.
+  Precompiled overlays/firmware are included; the pinned module downloads are
+  checked by SHA-256, ARM64 ELF metadata and vermagic. Source rebuilds are optional.
 - Current Fusion CAD, assembly STEP and STL parts under `cad/`.
   The X5 orientation is corrected and provisional audio is on the right to clear
   the left USB/Ethernet approach.
@@ -39,6 +40,8 @@ These are separate profiles, not interchangeable presets. Start with the
 - Fresh macOS ARM64 LVGL/SDL frontend build: passed.
 - Existing backend unit tests: 2 passed.
 - Existing headless renderer CTest: passed.
+- Four isolated installer tests passed: repeat install/restore, incorrect-kernel
+  rejection, corrupt-download rejection and incomplete-overlay repair.
 - Both display profiles compile with dtc; duplicate-address warnings describe
   the disabled spidev node sharing the panel's chip select in an overlay.
 - Generated firmware matches the original 109-byte binary byte-for-byte.

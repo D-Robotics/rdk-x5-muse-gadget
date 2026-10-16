@@ -1,0 +1,12 @@
+[Unit]
+Description=ST7796S display backlight
+After=systemd-udev-trigger.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/lib/muse-display/backlight.sh on
+ExecStop=/usr/local/lib/muse-display/backlight.sh off
+
+[Install]
+WantedBy=multi-user.target

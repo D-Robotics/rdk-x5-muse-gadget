@@ -8,6 +8,12 @@ The screen runs a native LVGL/SDL frontend. A Python backend sends messages to M
 
 Inference runs in Muse's cloud. The X5 handles the interface, device commands and audio. Internet access is required for Muse and speech synthesis.
 
+## Quick start
+
+1. [Set up the SPI screen](docs/SPI-LCD-SETUP.md) with the prebuilt 6.1.83 drivers.
+   Skip this step if the screen and touch already work.
+2. [Install Muse](#install) after pairing the official Linux SDK.
+
 ## Project files
 
 - [SPI display setup](docs/SPI-LCD-SETUP.md): ST7796S DRM display and GT911 touch,

@@ -10,6 +10,8 @@
     "Corrected physical pin numbering in guide",
     "Rounded physical active display dimensions to 74x49 mm",
     "Added separate, untested Waveshare F pogo profile from vendor schematic",
-    "No kernel binaries copied"
+    "No kernel binaries copied",
+    "Added precompiled CS1 DTBO/firmware assets and a kernel-checked quick installer",
+    "CS1 touch overlay disables I2C0 to release physical pin 28 for reset"
   ]
 }

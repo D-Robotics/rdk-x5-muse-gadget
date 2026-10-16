@@ -5,7 +5,8 @@
     "physical_cs_pin": 26,
     "touch_irq_physical_pin": 7,
     "touch_reset_physical_pin": 28,
-    "supply": "Legacy 3.3V module; verify module rating"
+    "supply": "Module dependent; Waveshare F 13-pin VCC is 5V, with 3.3V logic",
+    "i2c0": "Disabled to release physical pin 28 for touch reset"
   },
   "waveshare-f-pogo": {
     "status": "Candidate from official schematic and V04 geometry; not hardware-tested",

@@ -1,0 +1,17 @@
+{
+  "kernel": "6.1.83",
+  "machine": "aarch64",
+  "vermagic": "6.1.83 SMP preempt mod_unload aarch64",
+  "modules": [
+    {
+      "name": "panel-mipi-dbi.ko",
+      "sha256": "99697d88724337dbd1ea8cbcd436785d67b65111b4138c322fc63de6fe60cda1",
+      "url": "https://raw.githubusercontent.com/shockley6668/Cathay-Launch-UI/623032d56395b018387b8f262ac0693e2ca28e2d/kernel-modules/panel-mipi-dbi.ko"
+    },
+    {
+      "name": "drm_mipi_dbi.ko",
+      "sha256": "dd8c69d06428d9a18e3cd0fc0af8c55f2292012aa0685d2e089dee3dc961acc6",
+      "url": "https://raw.githubusercontent.com/shockley6668/Cathay-Launch-UI/623032d56395b018387b8f262ac0693e2ca28e2d/kernel-modules/drm_mipi_dbi.ko"
+    }
+  ]
+}
