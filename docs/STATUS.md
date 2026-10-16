@@ -10,7 +10,7 @@ connection or deployment is part of this update.
   desktop shortcut and XFCE autostart.
 - Earlier ST7796S kernel DRM + GT911 touch setup, now documented with corrected
   physical pin numbering. Source overlays and firmware generator are included.
-- V04 editable enclosure CAD, STEP/STL exports, geometry reports and assembly views.
+- Current Fusion CAD, assembly STEP and STL parts under `cad/`.
   The X5 orientation is corrected and provisional audio is on the right to clear
   the left USB/Ethernet approach.
 
@@ -42,7 +42,6 @@ These are separate profiles, not interchangeable presets. Start with the
 - Both display profiles compile with dtc; duplicate-address warnings describe
   the disabled spidev node sharing the panel's chip select in an overlay.
 - Generated firmware matches the original 109-byte binary byte-for-byte.
-- Organized V04 artifact SHA-256 manifest: all 23 listed files match.
 
 These checks do not test device-tree application, the X5 kernel, real touch,
 audio, display throughput or a printed enclosure.

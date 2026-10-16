@@ -12,5 +12,6 @@
   and Linux driver source are not redistributed here.
 - Vendor hardware geometry embedded in the CAD: D-Robotics RDK X5 and GS130WI,
   and Waveshare 3.5inch RPi LCD (F). Vendor geometry/marks retain their respective
-  ownership and are not relicensed by this repository's code license. See
-  [hardware/enclosure/README.md](hardware/enclosure/README.md) for source links.
+  ownership and are not relicensed by this repository's code license. Reference sources: [GS130WI](https://archive.d-robotics.cc/downloads/hardware/accessories/gs130wi/RDK%20Stereo%20Camera%20GS130WI%20Community.STEP),
+  [RDK X5](https://archive.d-robotics.cc/downloads/hardware/rdk_x5/),
+  [Waveshare LCD F](https://www.waveshare.com/3.5inch-rpi-lcd-f.htm).

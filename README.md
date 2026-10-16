@@ -14,8 +14,7 @@ Inference runs in Muse's cloud. The X5 handles the interface, device commands an
   with the earlier CS1 wiring kept separate from the Waveshare F pogo candidate.
 - [Display sources](hardware/display/README.md): overlays, initialization firmware
   generator and Xorg configuration.
-- [Enclosure CAD](hardware/enclosure/README.md): V04 Fusion, STEP and STL files,
-  assembly views and check reports.
+- [CAD files](cad/): the current Fusion model, assembly STEP and STL parts.
 - [Current status](docs/STATUS.md): what is implemented and what remains untested.
 
 The Linux UI/audio bridge runs independently of the enclosure. GS130WI vision,
