@@ -73,7 +73,7 @@ grep -A5 -i goodix /proc/bus/input/devices
 ```
 
 Look for the MIPI DBI framebuffer, an active backlight service and a Goodix input
-device. Once display and touch work, [install Muse](../README.md#install).
+device. Once display and touch work, [install Muse](../README.md#quick-start).
 
 ## If it does not work
 
