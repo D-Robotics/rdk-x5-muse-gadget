@@ -1,0 +1,245 @@
+{
+  "revision": "V03",
+  "rotation": "180 degrees about mounting rectangle centre, in board plane",
+  "pcb_mating_z_mm": -15,
+  "lcd_standoff_end_z_mm": -15,
+  "note": "Static vendor spring bodies are not deformed. Nominal free-tip overlap with header tails is about 2 mm, not a certified spring compression rating.",
+  "measurements": [
+    {
+      "occurrence": "REF_LCD_F_OFFICIAL:1+3_5INCH-RPI-LCD_F_ASM:1+3_5INCH_RPI_LCD_F_PCBA_ASM:1+PCB_ASM:1+BOARD:1",
+      "min_head_mm": [
+        33.1922,
+        20.0102,
+        -7.0
+      ],
+      "max_head_mm": [
+        118.1975,
+        76.0102,
+        -5.4
+      ]
+    },
+    {
+      "occurrence": "REF_LCD_F_OFFICIAL:1+3_5INCH-RPI-LCD_F_ASM:1+3_5INCH_RPI_LCD_F_PCBA_ASM:1+SMTSO-M2_5-8ET:1",
+      "min_head_mm": [
+        53.97,
+        69.75,
+        -15.0
+      ],
+      "max_head_mm": [
+        59.47,
+        75.25,
+        -5.5
+      ]
+    },
+    {
+      "occurrence": "REF_LCD_F_OFFICIAL:1+3_5INCH-RPI-LCD_F_ASM:1+3_5INCH_RPI_LCD_F_PCBA_ASM:1+PIN-01:1",
+      "min_head_mm": [
+        106.21,
+        70.0604,
+        -15.5
+      ],
+      "max_head_mm": [
+        108.41,
+        72.2604,
+        -5.5
+      ]
+    },
+    {
+      "occurrence": "REF_LCD_F_OFFICIAL:1+3_5INCH-RPI-LCD_F_ASM:1+3_5INCH_RPI_LCD_F_PCBA_ASM:1+SMTSO-M2_5-8ET:2",
+      "min_head_mm": [
+        53.97,
+        20.75,
+        -15.0
+      ],
+      "max_head_mm": [
+        59.47,
+        26.25,
+        -5.5
+      ]
+    },
+    {
+      "occurrence": "REF_LCD_F_OFFICIAL:1+3_5INCH-RPI-LCD_F_ASM:1+3_5INCH_RPI_LCD_F_PCBA_ASM:1+SMTSO-M2_5-8ET:3",
+      "min_head_mm": [
+        111.97,
+        20.75,
+        -15.0
+      ],
+      "max_head_mm": [
+        117.47,
+        26.25,
+        -5.5
+      ]
+    },
+    {
+      "occurrence": "REF_LCD_F_OFFICIAL:1+3_5INCH-RPI-LCD_F_ASM:1+3_5INCH_RPI_LCD_F_PCBA_ASM:1+SMTSO-M2_5-8ET:4",
+      "min_head_mm": [
+        111.97,
+        69.75,
+        -15.0
+      ],
+      "max_head_mm": [
+        117.47,
+        75.25,
+        -5.5
+      ]
+    },
+    {
+      "occurrence": "REF_LCD_F_OFFICIAL:1+3_5INCH-RPI-LCD_F_ASM:1+3_5INCH_RPI_LCD_F_PCBA_ASM:1+PIN-01:2",
+      "min_head_mm": [
+        106.21,
+        72.6004,
+        -15.5
+      ],
+      "max_head_mm": [
+        108.41,
+        74.8004,
+        -5.5
+      ]
+    },
+    {
+      "occurrence": "REF_LCD_F_OFFICIAL:1+3_5INCH-RPI-LCD_F_ASM:1+3_5INCH_RPI_LCD_F_PCBA_ASM:1+PIN-01:3",
+      "min_head_mm": [
+        103.67,
+        72.5387,
+        -15.5
+      ],
+      "max_head_mm": [
+        105.87,
+        74.7387,
+        -5.5
+      ]
+    },
+    {
+      "occurrence": "REF_LCD_F_OFFICIAL:1+3_5INCH-RPI-LCD_F_ASM:1+3_5INCH_RPI_LCD_F_PCBA_ASM:1+PIN-01:4",
+      "min_head_mm": [
+        103.67,
+        70.0604,
+        -15.5
+      ],
+      "max_head_mm": [
+        105.87,
+        72.2604,
+        -5.5
+      ]
+    },
+    {
+      "occurrence": "REF_LCD_F_OFFICIAL:1+3_5INCH-RPI-LCD_F_ASM:1+3_5INCH_RPI_LCD_F_PCBA_ASM:1+PIN-01:5",
+      "min_head_mm": [
+        101.13,
+        70.0604,
+        -15.5
+      ],
+      "max_head_mm": [
+        103.33,
+        72.2604,
+        -5.5
+      ]
+    },
+    {
+      "occurrence": "REF_LCD_F_OFFICIAL:1+3_5INCH-RPI-LCD_F_ASM:1+3_5INCH_RPI_LCD_F_PCBA_ASM:1+PIN-01:6",
+      "min_head_mm": [
+        96.2035,
+        72.5387,
+        -15.5
+      ],
+      "max_head_mm": [
+        98.4035,
+        74.7387,
+        -5.5
+      ]
+    },
+    {
+      "occurrence": "REF_LCD_F_OFFICIAL:1+3_5INCH-RPI-LCD_F_ASM:1+3_5INCH_RPI_LCD_F_PCBA_ASM:1+PIN-01:7",
+      "min_head_mm": [
+        93.6127,
+        70.0435,
+        -15.5
+      ],
+      "max_head_mm": [
+        95.8127,
+        72.2435,
+        -5.5
+      ]
+    },
+    {
+      "occurrence": "REF_LCD_F_OFFICIAL:1+3_5INCH-RPI-LCD_F_ASM:1+3_5INCH_RPI_LCD_F_PCBA_ASM:1+PIN-01:8",
+      "min_head_mm": [
+        90.97,
+        70.0603,
+        -15.5
+      ],
+      "max_head_mm": [
+        93.17,
+        72.2603,
+        -5.5
+      ]
+    },
+    {
+      "occurrence": "REF_LCD_F_OFFICIAL:1+3_5INCH-RPI-LCD_F_ASM:1+3_5INCH_RPI_LCD_F_PCBA_ASM:1+PIN-01:9",
+      "min_head_mm": [
+        85.89,
+        70.0605,
+        -15.5
+      ],
+      "max_head_mm": [
+        88.09,
+        72.2605,
+        -5.5
+      ]
+    },
+    {
+      "occurrence": "REF_LCD_F_OFFICIAL:1+3_5INCH-RPI-LCD_F_ASM:1+3_5INCH_RPI_LCD_F_PCBA_ASM:1+PIN-01:10",
+      "min_head_mm": [
+        80.81,
+        70.0545,
+        -15.5
+      ],
+      "max_head_mm": [
+        83.01,
+        72.2545,
+        -5.5
+      ]
+    },
+    {
+      "occurrence": "REF_LCD_F_OFFICIAL:1+3_5INCH-RPI-LCD_F_ASM:1+3_5INCH_RPI_LCD_F_PCBA_ASM:1+PIN-01:11",
+      "min_head_mm": [
+        80.81,
+        72.6003,
+        -15.5
+      ],
+      "max_head_mm": [
+        83.01,
+        74.8003,
+        -5.5
+      ]
+    },
+    {
+      "occurrence": "REF_RDK_X5_OFFICIAL:1+Assy_Root:1+X5_RDK_LPDDR4_4266MHz_V1P0_pcb:1+BOARD_OUTLINE:1",
+      "min_head_mm": [
+        33.225,
+        20.002,
+        -16.5084
+      ],
+      "max_head_mm": [
+        118.225,
+        76.002,
+        -15.0
+      ]
+    },
+    {
+      "occurrence": "REF_RDK_X5_OFFICIAL:1+Assy_Root:1+X5_RDK_LPDDR4_4266MHz_V1P0_pcb:1+\u6392\u9488-20:1",
+      "min_head_mm": [
+        60.3298,
+        69.9402,
+        -27.0984
+      ],
+      "max_head_mm": [
+        111.1298,
+        75.0202,
+        -13.4984
+      ]
+    }
+  ],
+  "pcb_face_to_free_tip_mm": 0.5,
+  "nominal_header_tail_overlap_mm": 2.0016
+}

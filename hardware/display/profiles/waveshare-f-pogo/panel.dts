@@ -1,0 +1,40 @@
+/* Waveshare F pogo candidate: CS0/pin 24. Check all CS0 children before use. */
+/dts-v1/;
+/plugin/;
+
+/ {
+    fragment@0 {
+        target-path = "/soc/a55_apb0/spi@34010000";
+        __overlay__ {
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            spidev@0 {
+                status = "disabled";
+            };
+
+            panel-mipi-dbi@0 {
+                compatible = "panel-mipi-dbi-spi";
+                reg = <0>;
+                spi-max-frequency = <32000000>;
+                dc-gpios = <&ls_gpio0_porta 9 0>;
+                write-only;
+
+                width-mm = <74>;
+                height-mm = <49>;
+
+                panel-timing {
+                    clock-frequency = <0>;
+                    hactive = <480>;
+                    vactive = <320>;
+                    hfront-porch = <0>;
+                    hsync-len = <0>;
+                    hback-porch = <0>;
+                    vfront-porch = <0>;
+                    vsync-len = <0>;
+                    vback-porch = <0>;
+                };
+            };
+        };
+    };
+};

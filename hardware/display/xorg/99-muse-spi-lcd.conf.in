@@ -1,0 +1,5 @@
+Section "Device"
+    Identifier "Muse SPI LCD"
+    Driver "modesetting"
+    Option "kmsdev" "@DRM_CARD@"
+EndSection

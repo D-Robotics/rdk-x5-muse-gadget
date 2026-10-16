@@ -13,3 +13,6 @@ sdk_token
 *.mp4
 *.mov
 *.log
+
+.vscode/
+hardware/display/build/

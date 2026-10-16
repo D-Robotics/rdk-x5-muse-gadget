@@ -9,7 +9,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get install -y --no-install-recommends libsdl2-dev ninja-build build-essential pkg-config cmake python3-venv python3-cryptography ffmpeg pulseaudio-utils xdotool x11-utils
 mkdir -p "$target_dir"
 if [[ "$source_dir" != "$target_dir" ]]; then
-    tar -C "$source_dir" --exclude="./.git" --exclude="./build" --exclude="./venv" --exclude="__pycache__" -cf - . | tar -C "$target_dir" -xf -
+    tar -C "$source_dir" --exclude="./.git" --exclude="./build" --exclude="./venv" --exclude="./.venv" --exclude="./hardware/enclosure" --exclude="./.vscode" --exclude="__pycache__" -cf - . | tar -C "$target_dir" -xf -
 fi
 python3 -m venv --system-site-packages "$target_dir/venv"
 "$target_dir/venv/bin/python" -m pip install 'websockets==16.0' 'edge-tts==7.2.8'

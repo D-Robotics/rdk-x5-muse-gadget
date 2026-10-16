@@ -1,0 +1,101 @@
+{
+  "datum_mm": [
+    120.351201,
+    47.68800001590776,
+    -18.748400000000018
+  ],
+  "direction": "Head local +X; moved with corrected X5 orientation",
+  "status": "V04 provisional plug envelope, transformed with board; actual connector fit remains untested",
+  "envelope_dimensions_mm": {
+    "elbow_axial": 20,
+    "body_diameter": 10,
+    "rearward_route_end_z": -52.25000000000001,
+    "straight_body": 30,
+    "straight_strain_relief": 10
+  },
+  "previous_layout_checks": {
+    "KEEP_OUT_AUDIO_ELBOW_PROVISIONAL": {
+      "collisions": [],
+      "failed": []
+    },
+    "KEEP_OUT_AUDIO_STRAIGHT_PROVISIONAL": {
+      "collisions": [
+        {
+          "envelope": "Straight_plug_and_relief",
+          "part": "02_REAR_SHELL_WITH_FOOT",
+          "mm3": 44.323
+        },
+        {
+          "envelope": "Straight_plug_and_relief",
+          "part": "05_SPEAKER_CLAMP",
+          "mm3": 65.275
+        },
+        {
+          "envelope": "Straight_plug_and_relief",
+          "part": "REF_AUDIO_PROVISIONAL",
+          "mm3": 11.1307
+        }
+      ],
+      "failed": []
+    }
+  },
+  "layout_change": "V04 audio placeholder moved to right, centre Y32 mm; left USB/RJ45 insertion paths cleared",
+  "checks": {
+    "KEEP_OUT_AUDIO_ELBOW_PROVISIONAL": {
+      "collisions": [
+        {
+          "envelope": "Elbow_body_clearance",
+          "part": "02_REAR_SHELL_WITH_FOOT",
+          "body": "Rear_outer",
+          "mm3": 48.1512
+        },
+        {
+          "envelope": "Elbow_body_clearance",
+          "part": "05_SPEAKER_CLAMP",
+          "body": "Body1",
+          "mm3": 28.1431
+        },
+        {
+          "envelope": "Elbow_body_clearance",
+          "part": "REF_AUDIO_PROVISIONAL",
+          "body": "Body1",
+          "mm3": 2.0066
+        },
+        {
+          "envelope": "Rearward_cable_route",
+          "part": "02_REAR_SHELL_WITH_FOOT",
+          "body": "Rear_outer",
+          "mm3": 423.0382
+        },
+        {
+          "envelope": "Rearward_cable_route",
+          "part": "05_SPEAKER_CLAMP",
+          "body": "Body1",
+          "mm3": 48.9011
+        },
+        {
+          "envelope": "Rearward_cable_route",
+          "part": "REF_AUDIO_PROVISIONAL",
+          "body": "Body1",
+          "mm3": 93.3575
+        }
+      ],
+      "failed": [],
+      "broadphase_candidates": 8
+    },
+    "KEEP_OUT_AUDIO_STRAIGHT_PROVISIONAL": {
+      "collisions": [],
+      "failed": [],
+      "broadphase_candidates": 5
+    }
+  },
+  "datum_note": "Insulating plug body starts 0.01 mm outside nominal plastic jack front, native z=2 mm. Metal inserted tip excluded.",
+  "not_validated": [
+    "Purchased plug dimensions",
+    "Actual cable minimum bend radius",
+    "Cable clamp and connector strain relief",
+    "Audio amplifier PCB"
+  ],
+  "active_envelope": "KEEP_OUT_AUDIO_STRAIGHT_PROVISIONAL",
+  "unsupported_alternative": "Elbow/rearward cable route is a rejected alternative in V04; collisions are retained in the report."
+}

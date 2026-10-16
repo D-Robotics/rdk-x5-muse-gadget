@@ -1,0 +1,341 @@
+{
+  "parts": [
+    {
+      "name": "01_FRONT_SHELL",
+      "solid": true,
+      "bodies": 1,
+      "volume_cm3": 67.2260257191804,
+      "unhealthy_features": []
+    },
+    {
+      "name": "02_REAR_SHELL_WITH_FOOT",
+      "solid": true,
+      "bodies": 1,
+      "volume_cm3": 135.21268679923008,
+      "unhealthy_features": []
+    },
+    {
+      "name": "04_CAMERA_YOKE",
+      "solid": true,
+      "bodies": 1,
+      "volume_cm3": 8.01429741909981,
+      "unhealthy_features": []
+    },
+    {
+      "name": "03_BOTTOM_COVER",
+      "solid": true,
+      "bodies": 1,
+      "volume_cm3": 45.78873763580871,
+      "unhealthy_features": []
+    },
+    {
+      "name": "05_SPEAKER_CLAMP",
+      "solid": true,
+      "bodies": 1,
+      "volume_cm3": 1.2331527027668832,
+      "unhealthy_features": []
+    }
+  ],
+  "enclosure_collisions": [],
+  "unresolved_pairs": [],
+  "x5_body_boolean_tests": 2116,
+  "excluded": "Internal overlaps within vendor STEP assemblies; contact below 0.01 mm3",
+  "notes": [
+    "Microphone and speaker are unselected; existing audio envelopes and holders are provisional. Cooling design is deferred by the user.",
+    "V04 retains corrected V03 GPIO stack and moves provisional audio to the right. USB/RJ45 entry corridors checked separately; actual plugs and pogo contact still require physical validation.",
+    "Integrated front shell with rear-driven M3x60 screws and captive M3 hex nuts.",
+    "Existing LCD standoff height and cable/plug clearance require trial assembly."
+  ],
+  "parameters": [
+    {
+      "name": "shell_w",
+      "expression": "146 mm",
+      "comment": "Design envelope; includes the X5 connector overhang"
+    },
+    {
+      "name": "shell_h",
+      "expression": "124 mm",
+      "comment": "Design envelope"
+    },
+    {
+      "name": "shell_d",
+      "expression": "62 mm",
+      "comment": "Design envelope; cooling allowance is provisional"
+    },
+    {
+      "name": "wall",
+      "expression": "2.4 mm",
+      "comment": "Prototype FDM wall"
+    },
+    {
+      "name": "corner_r",
+      "expression": "10 mm",
+      "comment": "Outside silhouette radius"
+    },
+    {
+      "name": "front_d",
+      "expression": "12 mm",
+      "comment": "Front/rear parting position"
+    },
+    {
+      "name": "seam_gap",
+      "expression": "0.25 mm",
+      "comment": "Trial-print assembly clearance"
+    },
+    {
+      "name": "fit_gap",
+      "expression": "0.6 mm",
+      "comment": "Total display aperture clearance"
+    },
+    {
+      "name": "display_w",
+      "expression": "92.44 mm",
+      "comment": "Official Waveshare glass width, landscape"
+    },
+    {
+      "name": "display_h",
+      "expression": "61 mm",
+      "comment": "Official Waveshare glass height, landscape"
+    },
+    {
+      "name": "display_y",
+      "expression": "48 mm",
+      "comment": "Display center in front-panel coordinates"
+    },
+    {
+      "name": "camera_y",
+      "expression": "104 mm",
+      "comment": "Camera center in front-panel coordinates"
+    },
+    {
+      "name": "lens_pitch",
+      "expression": "70 mm",
+      "comment": "Official GS130WI optical baseline"
+    },
+    {
+      "name": "lens_opening",
+      "expression": "18 mm",
+      "comment": "Lens clearance; lenses stand proud of panel"
+    },
+    {
+      "name": "camera_mount_pitch",
+      "expression": "106 mm",
+      "comment": "Extracted official STEP end-hole centers +/-53 mm"
+    },
+    {
+      "name": "camera_bore",
+      "expression": "2.9 mm",
+      "comment": "M2.5 clearance; trial print"
+    },
+    {
+      "name": "camera_ref_z",
+      "expression": "-14.9 mm",
+      "comment": "Original model lens front protrudes about 0.95 mm"
+    },
+    {
+      "name": "board_ref_z",
+      "expression": "-16.4984 mm",
+      "comment": "Measured STEP: PCB mating face Z=-15 mm, flush with LCD standoff ends; pogo free tips Z=-15.5 mm"
+    },
+    {
+      "name": "lean",
+      "expression": "10 deg",
+      "comment": "Assembly angle; refresh poses after editing"
+    },
+    {
+      "name": "head_lift",
+      "expression": "22 mm",
+      "comment": "Front lower edge above table"
+    },
+    {
+      "name": "base_w",
+      "expression": "154 mm",
+      "comment": "Wide stable foot"
+    },
+    {
+      "name": "base_d",
+      "expression": "94 mm",
+      "comment": "Wide stable foot"
+    },
+    {
+      "name": "base_t",
+      "expression": "3.2 mm",
+      "comment": "Removable bottom plate"
+    },
+    {
+      "name": "m3_clearance",
+      "expression": "3.4 mm",
+      "comment": "M3 clearance; trial print"
+    },
+    {
+      "name": "m3_pilot",
+      "expression": "2.5 mm",
+      "comment": "Plastic pilot; use suitable plastic screws"
+    },
+    {
+      "name": "speaker_d",
+      "expression": "28 mm",
+      "comment": "PROVISIONAL audio envelope; no supplied part model"
+    },
+    {
+      "name": "speaker_depth",
+      "expression": "12 mm",
+      "comment": "PROVISIONAL audio envelope"
+    },
+    {
+      "name": "mic_d",
+      "expression": "6 mm",
+      "comment": "PROVISIONAL microphone envelope"
+    },
+    {
+      "name": "cooling_w",
+      "expression": "40 mm",
+      "comment": "PROVISIONAL cooling keep-out, not an actual heatsink"
+    },
+    {
+      "name": "cooling_h",
+      "expression": "40 mm",
+      "comment": "PROVISIONAL cooling keep-out"
+    },
+    {
+      "name": "cooling_d",
+      "expression": "18 mm",
+      "comment": "PROVISIONAL cooling keep-out"
+    },
+    {
+      "name": "board_hole_dx",
+      "expression": "58 mm",
+      "comment": "Official PCB mounting pitch"
+    },
+    {
+      "name": "board_hole_dy",
+      "expression": "49 mm",
+      "comment": "Official PCB mounting pitch"
+    },
+    {
+      "name": "board_mount_x",
+      "expression": "-16.28 mm",
+      "comment": "Registered LCD offset"
+    },
+    {
+      "name": "display_ref_z",
+      "expression": "-1.2 mm",
+      "comment": "Glass placement"
+    },
+    {
+      "name": "fascia_gap",
+      "expression": "0.2 mm",
+      "comment": "Prototype removable adhesive layer"
+    },
+    {
+      "name": "fascia_t",
+      "expression": "1.6 mm",
+      "comment": "White cosmetic fascia thickness"
+    },
+    {
+      "name": "visor_t",
+      "expression": "1 mm",
+      "comment": "Black printed visor insert thickness"
+    },
+    {
+      "name": "visor_w",
+      "expression": "114 mm",
+      "comment": "Unified camera and display surround"
+    },
+    {
+      "name": "visor_h",
+      "expression": "100 mm",
+      "comment": "Unified camera and display surround"
+    },
+    {
+      "name": "visor_y",
+      "expression": "18 mm",
+      "comment": "Visor bottom edge"
+    },
+    {
+      "name": "active_w",
+      "expression": "73.84 mm",
+      "comment": "Official LCD active width; landscape"
+    },
+    {
+      "name": "active_h",
+      "expression": "49.36 mm",
+      "comment": "Official LCD active height; landscape"
+    },
+    {
+      "name": "active_offset_x",
+      "expression": "2.65 mm",
+      "comment": "Official active area offset from glass centre"
+    },
+    {
+      "name": "active_clearance",
+      "expression": "1.2 mm",
+      "comment": "Total aperture clearance; trial print"
+    },
+    {
+      "name": "peg_d",
+      "expression": "2.6 mm",
+      "comment": "Loose alignment peg; adhesive retains fascia"
+    },
+    {
+      "name": "peg_fit",
+      "expression": "0.4 mm",
+      "comment": "Total diametral peg clearance; trial print"
+    },
+    {
+      "name": "audio_jack_x",
+      "expression": "51.088799000000016 mm",
+      "comment": "Official STEP jack datum"
+    },
+    {
+      "name": "audio_jack_y",
+      "expression": "48.311999984092253 mm",
+      "comment": "Official STEP jack datum"
+    },
+    {
+      "name": "audio_jack_z",
+      "expression": "-22.25000000000001 mm",
+      "comment": "Official STEP jack datum"
+    },
+    {
+      "name": "audio_elbow_axial",
+      "expression": "20 mm",
+      "comment": "PROVISIONAL clearance envelope; replace with measured plug/cable"
+    },
+    {
+      "name": "audio_plug_d",
+      "expression": "10 mm",
+      "comment": "PROVISIONAL clearance envelope; replace with measured plug/cable"
+    },
+    {
+      "name": "audio_straight_body",
+      "expression": "30 mm",
+      "comment": "PROVISIONAL clearance envelope; replace with measured plug/cable"
+    },
+    {
+      "name": "audio_strain_relief",
+      "expression": "10 mm",
+      "comment": "PROVISIONAL clearance envelope; replace with measured plug/cable"
+    },
+    {
+      "name": "audio_cable_d",
+      "expression": "6 mm",
+      "comment": "PROVISIONAL clearance envelope; replace with measured plug/cable"
+    },
+    {
+      "name": "speaker_center_y",
+      "expression": "30 mm",
+      "comment": "Lowered 12 mm from V01 to clear straight 3.5 mm plug"
+    },
+    {
+      "name": "face_skin_t",
+      "expression": "1.8 mm",
+      "comment": "Integrated face masks glass border and old screw heads"
+    },
+    {
+      "name": "gpio_alignment_v03",
+      "expression": "1",
+      "comment": "V03 correct X5 in-plane orientation and audio clearance poses"
+    }
+  ]
+}

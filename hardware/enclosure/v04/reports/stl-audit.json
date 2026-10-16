@@ -1,0 +1,62 @@
+[
+  {
+    "file": "01_FRONT_SHELL.stl",
+    "triangles": 13456,
+    "nonmanifold_edges": 0,
+    "degenerate_triangles": 0,
+    "signed_volume_mm3": 67216.85,
+    "bbox_dimensions_mm": [
+      146.0,
+      124.0,
+      13.8
+    ]
+  },
+  {
+    "file": "02_REAR_SHELL_WITH_FOOT.stl",
+    "triangles": 15074,
+    "nonmanifold_edges": 0,
+    "degenerate_triangles": 0,
+    "signed_volume_mm3": 135159.55,
+    "bbox_dimensions_mm": [
+      146.0,
+      140.93,
+      49.75
+    ]
+  },
+  {
+    "file": "03_BOTTOM_COVER.stl",
+    "triangles": 1580,
+    "nonmanifold_edges": 0,
+    "degenerate_triangles": 0,
+    "signed_volume_mm3": 45788.63,
+    "bbox_dimensions_mm": [
+      154.0,
+      94.0,
+      3.2
+    ]
+  },
+  {
+    "file": "04_CAMERA_YOKE.stl",
+    "triangles": 1260,
+    "nonmanifold_edges": 0,
+    "degenerate_triangles": 0,
+    "signed_volume_mm3": 8014.19,
+    "bbox_dimensions_mm": [
+      118.0,
+      28.0,
+      5.2
+    ]
+  },
+  {
+    "file": "05_SPEAKER_CLAMP.stl",
+    "triangles": 2096,
+    "nonmanifold_edges": 0,
+    "degenerate_triangles": 0,
+    "signed_volume_mm3": 1233.04,
+    "bbox_dimensions_mm": [
+      2.4,
+      39.998,
+      33.997
+    ]
+  }
+]

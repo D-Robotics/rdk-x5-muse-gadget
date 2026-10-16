@@ -1,0 +1,19 @@
+{
+  "wired-cs1": {
+    "status": "Legacy Cathay manual wiring; not re-tested in this integration",
+    "chip_select": 1,
+    "physical_cs_pin": 26,
+    "touch_irq_physical_pin": 7,
+    "touch_reset_physical_pin": 28,
+    "supply": "Legacy 3.3V module; verify module rating"
+  },
+  "waveshare-f-pogo": {
+    "status": "Candidate from official schematic and V04 geometry; not hardware-tested",
+    "chip_select": 0,
+    "physical_cs_pin": 24,
+    "touch_irq_physical_pin": 7,
+    "touch_reset_physical_pin": null,
+    "supply": "5V at physical pin 4; logic is 3.3V",
+    "reset_note": "No separate TP_RST pogo in vendor STEP. LCD R21 reset link is 0R/NC in schematic."
+  }
+}

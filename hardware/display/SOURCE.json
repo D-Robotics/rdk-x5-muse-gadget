@@ -1,0 +1,15 @@
+{
+  "repository": "https://github.com/shockley6668/Cathay-Launch-UI",
+  "revision": "623032d56395b018387b8f262ac0693e2ca28e2d",
+  "files": {
+    "generate_st7796s_fw.py": "a6aa9fe30c09bbe3acc77ea89172f6989d157cfc",
+    "overlay-st7796s.dts": "641544833d813520ee0cec1db30e46813281d0b3",
+    "overlay-gt911.dts": "fdb4d58d3cc5389bd88930d4310802d95d6baac8"
+  },
+  "changes": [
+    "Corrected physical pin numbering in guide",
+    "Rounded physical active display dimensions to 74x49 mm",
+    "Added separate, untested Waveshare F pogo profile from vendor schematic",
+    "No kernel binaries copied"
+  ]
+}

@@ -8,12 +8,28 @@ The screen runs a native LVGL/SDL frontend. A Python backend sends messages to M
 
 Inference runs in Muse's cloud. The X5 handles the interface, device commands and audio. Internet access is required for Muse and speech synthesis.
 
+## Project files
+
+- [SPI display setup](docs/SPI-LCD-SETUP.md): ST7796S DRM display and GT911 touch,
+  with the earlier CS1 wiring kept separate from the Waveshare F pogo candidate.
+- [Display sources](hardware/display/README.md): overlays, initialization firmware
+  generator and Xorg configuration.
+- [Enclosure CAD](hardware/enclosure/README.md): V04 Fusion, STEP and STL files,
+  assembly views and check reports.
+- [Current status](docs/STATUS.md): what is implemented and what remains untested.
+
+The Linux UI/audio bridge runs independently of the enclosure. GS130WI vision,
+YOLO, gesture feeding/movement and desktop mini-apps are planned; they are not
+implemented in this snapshot. The CAD still uses provisional audio geometry.
+
+
 ## Setup
 
 Tested on:
 
 - RDK X5 running Ubuntu 22.04.5 ARM64 with XFCE/Xorg.
-- A 480×320 SPI touchscreen with working display and touch drivers.
+- A 480×320 SPI touchscreen with working display and touch drivers. See the
+  [display guide](docs/SPI-LCD-SETUP.md) to bring up the screen first.
 - Desktop account `sunrise`, UID 1000, display `:0`.
 - The official Linux SDK, already installed and paired with Muse.
 
@@ -28,7 +44,7 @@ Then run these commands on the X5:
 ```sh
 sudo apt-get update
 sudo apt-get install -y git
-git clone https://github.com/shockley6668/rdk-x5-muse-gadget.git
+git clone https://github.com/D-Robotics/rdk-x5-muse-gadget.git
 cd rdk-x5-muse-gadget
 # Read install.sh before running it.
 sudo bash install.sh
@@ -82,7 +98,7 @@ Board checks completed:
 
 Physical microphone quality and audible playback from the headset and Bluetooth speaker together still need testing.
 
-The backend tests and a fresh macOS ARM64 build with headless renderer checks passed on October 10, 2026. To run the backend tests locally:
+The backend tests and a fresh macOS ARM64 build with headless renderer checks passed on October 16, 2026. To run the backend tests locally:
 
 ```sh
 python3 -m venv .venv
