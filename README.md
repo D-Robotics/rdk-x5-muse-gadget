@@ -2,7 +2,7 @@
 
 Muse on a 480×320 touchscreen: pixel avatar, chat captions and hold-to-talk voice input. Based on Meta's [Muse Gadget SDK](https://github.com/facebookincubator/muse-gadget-sdk), with an LVGL/SDL interface and Python backend. Conversation and TTS require internet access.
 
-<img src="docs/images/rdk-x5-muse-cad-v04.png" alt="Muse RDK X5 CAD preview" width="640">
+<img src="docs/images/rdk-x5-muse-cad.png" alt="Muse RDK X5 enclosure CAD preview" width="640">
 
 ## Quick start
 
@@ -22,7 +22,7 @@ sudo bash install.sh
 
 The installer builds the UI in `/opt/muse-ui`, adds the **Muse** desktop shortcut and enables autostart. It also installs a root backend service and configures the desktop user's PulseAudio output.
 
-A compatible microphone and speaker are needed for voice. Audio device settings are in [muse-ui.service](muse-ui.service).
+A compatible microphone and speaker are needed for voice. The current plan uses a CTIA 3.5 mm TRRS microphone and a USB audio speaker. Set the recording device with `PULSE_SOURCE` and the playback device with `PULSE_SINK` in [muse-ui.service](muse-ui.service). The newly selected audio hardware has not been tested on the X5.
 
 ## Controls
 
@@ -33,11 +33,12 @@ A compatible microphone and speaker are needed for voice. Audio device settings 
 
 ## CAD and development
 
-- [CAD files](cad/): editable Fusion model, assembly STEP and STL parts.
+- [CAD files](cad/): editable Fusion model, assembly STEP and six STL parts.
+- [Enclosure assembly and fasteners](docs/ENCLOSURE.md).
 - [Build and renderer tests](simulator/README.md).
 - [Project status](docs/STATUS.md).
 
-The CAD is a fit prototype; audio mounts and pogo contacts still need physical checks. GS130WI vision, YOLO and gesture interactions are planned.
+V08 adds corrected GS130WI seats, adjustable X5/heatsink clamps, hidden shell snaps and optional screw closure. It is a fit prototype: audio mounts and concealed cable routing are unfinished, and pogo contact still needs checking. GS130WI vision, YOLO and gesture interactions are planned.
 
 ## Logs
 

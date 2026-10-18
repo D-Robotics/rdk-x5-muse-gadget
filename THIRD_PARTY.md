@@ -16,3 +16,7 @@
   ownership and are not relicensed by this repository's code license. Reference sources: [GS130WI](https://archive.d-robotics.cc/downloads/hardware/accessories/gs130wi/RDK%20Stereo%20Camera%20GS130WI%20Community.STEP),
   [RDK X5](https://archive.d-robotics.cc/downloads/hardware/rdk_x5/),
   [Waveshare LCD F](https://www.waveshare.com/3.5inch-rpi-lcd-f.htm).
+- The Fusion timeline retains a retired PAM8302 reference from
+  [Adafruit CAD Parts](https://github.com/adafruit/Adafruit_CAD_Parts/tree/main/2130%20PAM8302).
+  It is removed from the current assembly and print set; the source geometry
+  retains its original ownership.
