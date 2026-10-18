@@ -1,0 +1,17 @@
+# Local gesture event moving the desktop pet to the right.
+face=happy
+caption=Following your hand
+pet_mode=moving
+pet_x=80
+pet_hunger=24
+pet_happiness=88
+pet_energy=76
+pet_gesture=thumb_right
+pet_object=none
+pet_timer=off
+pet_app=none
+vision=online
+audio=true
+wifi=connected
+paired=true
+advance=1200

@@ -895,6 +895,10 @@ void muse_pixel_render(const muse_pose_t *p)
     float happy = p->happy;
     float level = p->level;
     float t = p->t;
+    bool local_pose = mode == MUSE_MODE_IDLE || mode == MUSE_MODE_ERROR;
+    if (local_pose && (p->sleeping || p->eating || p->moving)) {
+        mode = MUSE_MODE_IDLE;
+    }
 
     update_palette(&SCHEMES[mode], dt);
     float blink = eyes_update(p, dt);
@@ -924,6 +928,10 @@ void muse_pixel_render(const muse_pose_t *p)
     }
     if (happy > 0) {
         hop = fabsf(sinf(t * 9.0f)) * 3.0f * happy;
+    }
+    if (local_pose && p->moving) {
+        hop += fabsf(sinf(t * 8.0f)) * 2.0f;
+        lean = sinf(t * 8.0f) * 0.7f;
     }
 
     /* Boot: the avatar pops up from a squash, then opens their eyes. */
@@ -1045,6 +1053,14 @@ void muse_pixel_render(const muse_pose_t *p)
     if (happy > 0.2f && mode != MUSE_MODE_ERROR) {
         style = EYES_HAPPY;
         mouth = MOUTH_GRIN;
+    }
+    if (local_pose && p->sleeping) {
+        open = 0;
+        mouth = MOUTH_O;
+    } else if (local_pose && p->eating) {
+        style = EYES_HAPPY;
+        mouth = MOUTH_TALK;
+        mouth_open = 0.2f + 0.6f * fabsf(sinf(t * 10.0f));
     }
 
     draw_eye(j.fx - eye_dx, eye_y, open, style, s_eyes.gx, s_eyes.gy);

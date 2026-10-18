@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+
+exec /opt/muse-ui/venv/bin/python /opt/muse-ui/petctl.py "$@"

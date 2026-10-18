@@ -1,0 +1,15 @@
+face=idle
+pet_mode=focus
+pet_x=0
+pet_timer=24:50
+pet_hunger=20
+pet_energy=80
+pet_happiness=65
+pet_object=cup
+pet_gesture=Palm
+pet_app=timer
+vision=ready
+audio=true
+paired=true
+page=pet
+advance=1200

@@ -28,6 +28,7 @@ from musegadget import muse_api
 from musegadget.identity import Identity
 from musegadget.link_client import DeviceDescription, LinkSession, _Request
 from musegadget.noise import Header
+from pet import PetEngine
 
 LOG = logging.getLogger("muse-ui")
 RUNTIME = Path(os.environ.get("MUSE_UI_RUNTIME", "/run/muse-ui"))
@@ -38,6 +39,15 @@ LANGUAGE_HINT = (
     "Interpret the attached voice note using those languages. Reply in the "
     "language I used, with Simplified Chinese for Mandarin. If the audio is "
     "unclear, ask me to repeat rather than guessing another language."
+)
+PET_HINT = (
+    "This is the RDK X5 desktop pet. For my requests to control it, use the "
+    "paired Linux gadget's system.run tool with petctl. Available commands: "
+    "petctl wake; petctl sleep; petctl pet; petctl move left|right|stop; "
+    "petctl feed banana; petctl timer start MINUTES; petctl timer cancel; "
+    "petctl find OBJECT; petctl status. Read petctl status after a command "
+    "before claiming it worked. Object search uses the active detector's "
+    "labels (COCO by default); do not claim open-vocabulary vision is running."
 )
 
 
@@ -194,7 +204,7 @@ def make_voice_payload(pcm):
         f.setsampwidth(2)
         f.setframerate(16000)
         f.writeframes(pcm)
-    return {"message": LANGUAGE_HINT, "items": [{
+    return {"message": LANGUAGE_HINT + "\n" + PET_HINT, "items": [{
         "type": "file", "mime_type": "audio/wav", "filename": "voice_note.wav",
         "data_base64": base64.b64encode(wav.getvalue()).decode("ascii"),
     }]}
@@ -228,9 +238,10 @@ def caption_pages(text, width=27, lines=2):
 
 
 class Bridge:
-    def __init__(self):
+    def __init__(self, pet_engine=None):
         self.session = None
         self.stop = asyncio.Event()
+        self.chat_enabled = os.environ.get("MUSE_UI_CHAT", "on") != "off"
         self.audio_enabled = os.environ.get("MUSE_UI_AUDIO", "off") == "on"
         self.mirror_enabled = os.environ.get("MUSE_UI_MIRROR", "0") == "1"
         self.state = dict(face="boot", caption="", level="0",
@@ -238,6 +249,8 @@ class Bridge:
                           wifi="connecting", link="connecting",
                           audio="true" if self.audio_enabled else "false",
                           speaker="true" if self.audio_enabled else "false")
+        self.pet = pet_engine or PetEngine()
+        self.state.update(self.pet.state_fields())
         self.muted = not self.audio_enabled
         self.mirror_messages = {}
         self.mirror_done_ids = []
@@ -261,6 +274,11 @@ class Bridge:
 
     def set_state(self, **values):
         self.state.update(values)
+        self.write_state()
+
+    def update_pet_state(self):
+        """Mirror the engine into the shared state file without owning UI state."""
+        self.state.update(self.pet.state_fields())
         self.write_state()
 
     def mirror_event(self, event):
@@ -358,7 +376,27 @@ class Bridge:
 
     async def command(self, cmd):
         action = cmd.get("action")
-        if action == "start":
+        if action == "pet_command":
+            name = cmd.get("command")
+            params = cmd.get("params")
+            if params is None:
+                params = {key: value for key, value in cmd.items()
+                          if key not in ("action", "command")}
+            if not isinstance(name, str) or not isinstance(params, dict):
+                raise ValueError("pet_command requires a command and object params")
+            self.pet.command(name, **params)
+            self.update_pet_state()
+        elif action == "pet_event":
+            event = cmd.get("event")
+            if event is None:
+                event = {key: value for key, value in cmd.items() if key != "action"}
+            if not isinstance(event, dict):
+                raise ValueError("pet_event requires an event object")
+            result = self.pet.handle_event(event)
+            if not result["accepted"]:
+                LOG.debug("pet event rejected: %s", result["reason"])
+            self.update_pet_state()
+        elif action == "start":
             if not self.audio_enabled:
                 return
             if self.recording or (self.turn_task and not self.turn_task.done()):
@@ -514,9 +552,12 @@ class Bridge:
         sock.setblocking(False)
         path.chmod(0o660)
         import grp
-        os.chown(path, 0, grp.getgrnam("sunrise").gr_gid)
+        if os.geteuid() == 0:
+            os.chown(path, 0, grp.getgrnam("sunrise").gr_gid)
         loop = asyncio.get_running_loop()
-        connection = asyncio.create_task(self.connect_loop())
+        connection = asyncio.create_task(self.connect_loop() if self.chat_enabled else self.stop.wait())
+        if not self.chat_enabled:
+            self.set_state(face="idle", link="offline", wifi="off")
         heartbeat = asyncio.create_task(self.heartbeat())
         try:
             while not self.stop.is_set():
@@ -525,7 +566,7 @@ class Bridge:
                     cmd = json.loads(raw)
                     if isinstance(cmd, dict):
                         await self.command(cmd)
-                except (ValueError, OSError) as exc:
+                except (ValueError, TypeError, OverflowError, OSError) as exc:
                     LOG.warning("input rejected: %s", type(exc).__name__)
         finally:
             self.stop.set()
@@ -562,8 +603,8 @@ class Bridge:
 
     async def heartbeat(self):
         while not self.stop.is_set():
-            await asyncio.sleep(5)
-            self.write_state()
+            await asyncio.sleep(0.1)
+            self.update_pet_state()
 
 
 async def main():

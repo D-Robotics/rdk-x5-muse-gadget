@@ -16,6 +16,7 @@
 
 #include "sim_services.h"
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -45,6 +46,22 @@ static muse_link_state_t s_link = MUSE_LINK_ONLINE;
 static int s_brightness = 75;
 static bool s_speaker = true;
 static bool s_audio_available;
+static char s_pet_mode[24] = "idle";
+static char s_pet_object[32] = "none";
+static char s_pending_food[32];
+static char s_pet_gesture[32] = "none";
+static char s_pet_timer[32] = "off";
+static char s_pet_app[40] = "none";
+static char s_vision[40] = "waiting";
+static char s_find_target[32];
+static char s_find_state[24];
+static int s_pet_hunger;
+static int s_pet_happiness = 70;
+static int s_pet_energy = 100;
+static bool s_pet_active;
+static lv_obj_t *s_pet_status_label;
+static lv_obj_t *s_pet_stats_label;
+static lv_obj_t *s_pet_detail_label;
 
 void sim_services_set_audio(bool available)
 {
@@ -91,6 +108,15 @@ void sim_services_reset(void)
     s_link = MUSE_LINK_ONLINE;
     s_brightness = 75;
     s_speaker = true;
+    copy_text(s_pet_mode, sizeof(s_pet_mode), "idle");
+    copy_text(s_pet_object, sizeof(s_pet_object), "none");
+    copy_text(s_pet_gesture, sizeof(s_pet_gesture), "none");
+    copy_text(s_pet_timer, sizeof(s_pet_timer), "off");
+    copy_text(s_pet_app, sizeof(s_pet_app), "none");
+    copy_text(s_vision, sizeof(s_vision), "waiting");
+    s_pet_hunger = 0;
+    s_pet_happiness = 70;
+    s_pet_energy = 100;
 }
 
 void sim_services_set_wifi(muse_wifi_state_t state, const char *ssid)
@@ -144,6 +170,81 @@ void sim_services_set_brightness(int pct)
 void sim_services_set_speaker(bool on)
 {
     s_speaker = on;
+}
+
+static bool set_pet_number(const char *value, int *out)
+{
+    char *end = NULL;
+    long n = strtol(value, &end, 10);
+    if (!value[0] || !end || *end || n < 0 || n > 100) {
+        return false;
+    }
+    *out = (int)n;
+    return true;
+}
+
+bool sim_services_set_pet_value(const char *key, const char *value)
+{
+    if (!strcmp(key, "pet_mode")) {
+        s_pet_active = true;
+        copy_text(s_pet_mode, sizeof(s_pet_mode), value);
+    } else if (!strcmp(key, "pet_object")) {
+        copy_text(s_pet_object, sizeof(s_pet_object), value);
+    } else if (!strcmp(key, "pet_gesture")) {
+        copy_text(s_pet_gesture, sizeof(s_pet_gesture), value);
+    } else if (!strcmp(key, "pet_timer")) {
+        copy_text(s_pet_timer, sizeof(s_pet_timer), value);
+    } else if (!strcmp(key, "pet_app")) {
+        copy_text(s_pet_app, sizeof(s_pet_app), value);
+    } else if (!strcmp(key, "vision")) {
+        copy_text(s_vision, sizeof(s_vision), value);
+    } else if (!strcmp(key, "pet_hunger")) {
+        return set_pet_number(value, &s_pet_hunger);
+    } else if (!strcmp(key, "pet_happiness")) {
+        return set_pet_number(value, &s_pet_happiness);
+    } else if (!strcmp(key, "pet_energy")) {
+        return set_pet_number(value, &s_pet_energy);
+    } else if (!strcmp(key, "pet_find_target")) {
+        copy_text(s_find_target, sizeof(s_find_target), value);
+    } else if (!strcmp(key, "pet_find_state")) {
+        copy_text(s_find_state, sizeof(s_find_state), value);
+    } else if (!strcmp(key, "pet_pending_food")) {
+        copy_text(s_pending_food, sizeof(s_pending_food), value);
+    } else if (!strncmp(key, "pet_", 4)) {
+        /* Detailed engine fields are available to petctl; the renderer only
+         * needs the subset above. Keep the state protocol extensible. */
+        return true;
+    } else {
+        return false;
+    }
+    return true;
+}
+
+const char *sim_services_pet_mode(void)
+{
+    return s_pet_mode;
+}
+
+bool sim_services_pet_active(void)
+{
+    return s_pet_active;
+}
+
+const char *sim_services_pet_badge(void)
+{
+    static char badge[80];
+    badge[0] = '\0';
+    if (strcmp(s_pet_timer, "off") && strcmp(s_pet_timer, "cancelled")) {
+        snprintf(badge, sizeof(badge), "Focus %s", s_pet_timer);
+    } else if (!strcmp(s_find_state, "searching") || !strcmp(s_find_state, "found")) {
+        snprintf(badge, sizeof(badge), "%s %s",
+                 !strcmp(s_find_state, "found") ? "Found" : "Find", s_find_target);
+    } else if (!strcmp(s_pet_mode, "eating")) {
+        snprintf(badge, sizeof(badge), "Yum!");
+    } else if (!strcmp(s_pending_food, "banana")) {
+        snprintf(badge, sizeof(badge), "Banana + OK");
+    }
+    return badge;
 }
 
 int muse_settings_brightness(void)
@@ -200,17 +301,87 @@ muse_link_state_t muse_link_state(void)
     return s_link;
 }
 
+extern void muse_backend_pet_action(const char *action);
+
+static void on_pet_action(lv_event_t *event)
+{
+    const char *action = lv_event_get_user_data(event);
+    if (action) {
+        muse_backend_pet_action(action);
+    }
+}
+
+static void add_pet_button(lv_obj_t *parent, const char *text, const char *action)
+{
+    lv_obj_t *button = lv_button_create(parent);
+    lv_obj_set_size(button, 116, 44);
+    lv_obj_set_style_bg_color(button, lv_color_hex(0x211d35), 0);
+    lv_obj_set_style_radius(button, 14, 0);
+    lv_obj_add_event_cb(button, on_pet_action, LV_EVENT_CLICKED, (void *)action);
+    lv_obj_t *label = lv_label_create(button);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_14, 0);
+    lv_label_set_text(label, text);
+    lv_obj_center(label);
+}
+
 void muse_settings_ui_build(lv_obj_t *tile)
 {
-    lv_obj_t *label = lv_label_create(tile);
-    lv_label_set_text(label, "Muse");
-    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_center(label);
+    lv_obj_set_style_bg_color(tile, lv_color_black(), 0);
+    lv_obj_t *title = lv_label_create(tile);
+    lv_label_set_text(title, "PET CONTROLS");
+    lv_obj_set_style_text_color(title, lv_color_hex(0xa77dff), 0);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_20, 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 12);
+
+    s_pet_status_label = lv_label_create(tile);
+    lv_obj_set_style_text_color(s_pet_status_label, lv_color_white(), 0);
+    lv_obj_set_style_text_font(s_pet_status_label, &lv_font_montserrat_16, 0);
+    lv_obj_align(s_pet_status_label, LV_ALIGN_TOP_MID, 0, 44);
+
+    s_pet_stats_label = lv_label_create(tile);
+    lv_obj_set_style_text_color(s_pet_stats_label, lv_color_hex(0xd8d2ff), 0);
+    lv_obj_align(s_pet_stats_label, LV_ALIGN_TOP_MID, 0, 69);
+
+    lv_obj_t *buttons = lv_obj_create(tile);
+    lv_obj_remove_style_all(buttons);
+    lv_obj_set_size(buttons, 420, 106);
+    lv_obj_align(buttons, LV_ALIGN_CENTER, 0, 13);
+    lv_obj_set_flex_flow(buttons, LV_FLEX_FLOW_ROW_WRAP);
+    lv_obj_set_flex_align(buttons, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                          LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(buttons, 10, 0);
+    lv_obj_set_style_pad_row(buttons, 8, 0);
+    add_pet_button(buttons, "Wake", "wake");
+    add_pet_button(buttons, "Feed", "feed");
+    add_pet_button(buttons, "Focus 25", "timer start 25");
+    add_pet_button(buttons, "Find banana", "find banana");
+    add_pet_button(buttons, "Sleep", "sleep");
+    add_pet_button(buttons, "Stop timer", "timer cancel");
+
+    s_pet_detail_label = lv_label_create(tile);
+    lv_obj_set_width(s_pet_detail_label, 440);
+    lv_obj_set_style_text_font(s_pet_detail_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_align(s_pet_detail_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(s_pet_detail_label, lv_color_hex(0x8b84a8), 0);
+    lv_obj_align(s_pet_detail_label, LV_ALIGN_BOTTOM_MID, 0, -27);
 }
 
 void muse_settings_ui_tick(bool visible)
 {
-    (void)visible;
+    if (!visible || !s_pet_status_label) {
+        return;
+    }
+    char status[96];
+    snprintf(status, sizeof(status), "%s  |  %s", s_pet_mode, s_pet_timer);
+    lv_label_set_text(s_pet_status_label, status);
+    char stats[96];
+    snprintf(stats, sizeof(stats), "Hunger %d   Happy %d   Energy %d",
+             s_pet_hunger, s_pet_happiness, s_pet_energy);
+    lv_label_set_text(s_pet_stats_label, stats);
+    char detail[180];
+    snprintf(detail, sizeof(detail), "Vision: %s  |  Gesture: %s\nObject: %s  |  App: %s",
+             s_vision, s_pet_gesture, s_pet_object, s_pet_app);
+    lv_label_set_text(s_pet_detail_label, detail);
 }
 
 bool muse_settings_ui_in_subpage(void)

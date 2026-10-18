@@ -110,6 +110,7 @@ static lv_obj_t *s_state_lbl;
 static lv_obj_t *s_name_lbl;    /* this gadget's own name, to tell it from the next one */
 static lv_obj_t *s_power_lbl;
 static lv_obj_t *s_caption_lbl;
+static lv_obj_t *s_pet_badge;
 static lv_obj_t *s_reply_lbl;   /* full layout: the reply's page while answering */
 static lv_obj_t *s_meter[METER_SEGS];
 static lv_obj_t *s_speaker;
@@ -145,6 +146,7 @@ static int s_preview_brightness = -1;
 static int s_shown_page = -1;
 static int s_shown_speaker = -1;
 static muse_mode_t s_last_mode = MUSE_MODE_COUNT;
+static int s_shown_pet_x = -1000;
 
 /*
  * While Muse is thinking or speaking it shrinks to make room for the reply:
@@ -386,6 +388,7 @@ static lv_obj_t *make_mic(lv_obj_t *parent, int size)
     lv_obj_set_style_radius(head, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_opa(head, LV_OPA_COVER, 0);
     lv_obj_align(head, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_remove_flag(head, LV_OBJ_FLAG_CLICKABLE);
 
     lv_obj_t *cradle = lv_arc_create(box);
     lv_obj_set_size(cradle, size * 5 / 8 + stroke, size * 5 / 8 + stroke);
@@ -402,12 +405,14 @@ static lv_obj_t *make_mic(lv_obj_t *parent, int size)
     lv_obj_set_size(stem, stroke, size * 7 / 8 - size * 5 / 8);
     lv_obj_set_style_bg_opa(stem, LV_OPA_COVER, 0);
     lv_obj_align(stem, LV_ALIGN_TOP_MID, 0, size * 5 / 8);
+    lv_obj_remove_flag(stem, LV_OBJ_FLAG_CLICKABLE);
 
     lv_obj_t *base = lv_obj_create(box);
     lv_obj_remove_style_all(base);
     lv_obj_set_size(base, size * 3 / 8, stroke);
     lv_obj_set_style_bg_opa(base, LV_OPA_COVER, 0);
     lv_obj_align(base, LV_ALIGN_TOP_MID, 0, size * 7 / 8);
+    lv_obj_remove_flag(base, LV_OBJ_FLAG_CLICKABLE);
     return box;
 }
 
@@ -420,13 +425,54 @@ static void set_mic_color(uint32_t color)
     }
 }
 
+#if defined(__GNUC__)
+__attribute__((weak))
+#endif
+void muse_backend_talk(bool active)
+{
+    (void)active;
+}
+
+#if defined(__GNUC__)
+__attribute__((weak))
+#endif
+void muse_backend_pet_action(const char *action)
+{
+    (void)action;
+}
+
+static void on_mic_event(lv_event_t *e)
+{
+    switch (lv_event_get_code(e)) {
+    case LV_EVENT_PRESSED:
+        set_mic_color(COLOR_LIT);
+        muse_backend_talk(true);
+        break;
+    case LV_EVENT_RELEASED:
+    case LV_EVENT_PRESS_LOST:
+        set_mic_color(COLOR_DIM);
+        muse_backend_talk(false);
+        break;
+    default:
+        break;
+    }
+}
+
 /* Icons beside the physical buttons, in place of an instruction caption. */
 static void build_button_icons(lv_obj_t *face)
 {
     const muse_button_hint_t *t = &muse_board->talk_hint, *a = &muse_board->aux_hint;
-    s_mic_icon = make_mic(face, s_tall ? 24 : s_small ? 12 : 26);
+    int mic_size = muse_board->touch && s_w >= 300 ? 30 : (s_tall ? 24 : s_small ? 12 : 26);
+    s_mic_icon = make_mic(face, mic_size);
     lv_obj_align(s_mic_icon, t->align, t->x, t->y);
     set_mic_color(COLOR_DIM);
+    if (muse_board->touch) {
+        lv_obj_add_flag(s_mic_icon, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_set_ext_click_area(s_mic_icon, 14);
+        lv_obj_add_event_cb(s_mic_icon, on_mic_event, LV_EVENT_PRESSED, NULL);
+        lv_obj_add_event_cb(s_mic_icon, on_mic_event, LV_EVENT_RELEASED, NULL);
+        lv_obj_add_event_cb(s_mic_icon, on_mic_event, LV_EVENT_PRESS_LOST, NULL);
+    }
 
     /* Without touch the aux button opens the menu rather than sleeping. A board
      * that leaves aux_hint out has no button to put an icon beside. */
@@ -442,6 +488,7 @@ static void on_canvas_clicked(lv_event_t *e)
 {
     (void)e;
     muse_state_make_happy();
+    muse_backend_pet_action("pet");
 }
 
 
@@ -561,12 +608,21 @@ static void set_canvas_px(int px)
     lv_image_set_src(s_canvas, &s_muse_src);   /* picks up the new size */
 }
 
+static int pet_x_offset(void)
+{
+    int room = (s_w - (int)s_muse_src.header.w) / 2 - 8;
+    if (room < 0) {
+        room = 0;
+    }
+    return room * muse_state_pet_x() / 100;
+}
+
 static void move_muse_t(void *obj, int32_t t)
 {
     (void)obj;
     set_canvas_px(s_from_px + (s_to_px - s_from_px) * t / 256);
     s_muse_y = s_from_y + (s_to_y - s_from_y) * t / 256;
-    lv_obj_align(s_canvas, LV_ALIGN_CENTER, 0, s_muse_y);
+    lv_obj_align(s_canvas, LV_ALIGN_CENTER, pet_x_offset(), s_muse_y);
 }
 
 /* Eases Muse to `px` centred at `y`, from wherever it is now. */
@@ -853,7 +909,7 @@ static void build_screen(void)
     muse_image_init();
     s_canvas = lv_image_create(face);
     lv_image_set_src(s_canvas, &s_muse_src);
-    lv_obj_align(s_canvas, LV_ALIGN_CENTER, 0, s_big_y);
+    lv_obj_align(s_canvas, LV_ALIGN_CENTER, pet_x_offset(), s_big_y);
     s_muse_y = s_big_y;
     lv_obj_add_flag(s_canvas, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(s_canvas, on_canvas_clicked, LV_EVENT_CLICKED, NULL);
@@ -862,6 +918,8 @@ static void build_screen(void)
         lv_obj_move_foreground(s_ring);
     }
     build_button_icons(face);
+    s_pet_badge = make_label(face, &lv_font_montserrat_14, COLOR_ACCENT);
+    lv_obj_align(s_pet_badge, LV_ALIGN_BOTTOM_LEFT, 12, -12);
 
     /* A touch-only board needs a way back to its Linux desktop. */
     lv_obj_t *desktop_button = lv_button_create(face);
@@ -1507,6 +1565,12 @@ static void frame_tick(lv_timer_t *timer)
         return;
     }
     update_chrome(now);
+    lv_label_set_text(s_pet_badge, sim_services_pet_badge());
+    int pet_x = muse_state_pet_x();
+    if (pet_x != s_shown_pet_x) {
+        s_shown_pet_x = pet_x;
+        lv_obj_align(s_canvas, LV_ALIGN_CENTER, pet_x_offset(), s_muse_y);
+    }
     if (muse_menu_tick(now)) {
         image_hide_locked();
         return;   /* the menu covers the face */
@@ -1524,12 +1588,20 @@ static void frame_tick(lv_timer_t *timer)
     float level = muse_state_level();
     s_level += (level - s_level) * (level > s_level ? 0.6f : 0.2f);
 
+    const char *pet_mode = sim_services_pet_mode();
+    bool local_pose = mode == MUSE_MODE_IDLE ||
+                      (mode == MUSE_MODE_ERROR && sim_services_pet_active());
+    float happy = muse_state_happiness();
+    if (local_pose && !strcmp(pet_mode, "happy")) happy = 1;
     muse_pose_t pose = {
-        .mode = mode,
+        .mode = local_pose ? MUSE_MODE_IDLE : mode,
         .t = now,
         .mode_t = mode_t,
         .level = s_level,
-        .happy = muse_state_happiness(),
+        .happy = happy,
+        .sleeping = local_pose && !strcmp(pet_mode, "sleeping"),
+        .eating = local_pose && !strcmp(pet_mode, "eating"),
+        .moving = local_pose && !strcmp(pet_mode, "moving"),
     };
     muse_pixel_render(&pose);
     invalidate_muse();
@@ -1596,6 +1668,14 @@ void muse_ui_show_face(void)
     }
     lv_obj_add_flag(s_tv, LV_OBJ_FLAG_SCROLLABLE);
     lv_tileview_set_tile(s_tv, s_face, LV_ANIM_ON);
+}
+
+void muse_ui_show_settings(void)
+{
+    if (s_tv) {
+        lv_obj_update_layout(s_tv);
+        lv_tileview_set_tile(s_tv, s_settings, LV_ANIM_OFF);
+    }
 }
 
 void muse_ui_set_swipe_enabled(bool enabled)

@@ -19,9 +19,11 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 from pathlib import Path
 import subprocess
+import socket
 import tempfile
 
 WIDTH, HEIGHT = 480, 320
@@ -89,7 +91,7 @@ def main() -> None:
         assert recovered == hashes["listening"], "Off prevented the next preview state"
 
         invalid = tmp_path / "invalid.txt"
-        for setting in ("face=definitely-not-a-mode", "level=nan"):
+        for setting in ("face=definitely-not-a-mode", "level=nan", "pet_x=101"):
             invalid.write_text(f"{setting}\n")
             proc = subprocess.run(
                 [str(binary), "--headless", "--scenario", str(invalid)],
@@ -100,6 +102,31 @@ def main() -> None:
             )
             assert proc.returncode == 2
             assert "unsupported or invalid setting" in proc.stderr
+
+        # Real SDL pointer input must pet the avatar without recording audio.
+        # Hold/release on the microphone must generate start/stop instead.
+        with tempfile.TemporaryDirectory(dir="/tmp", prefix="mui-") as runtime:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as receiver:
+                receiver.bind(str(Path(runtime) / "input.sock"))
+                receiver.settimeout(.1)
+                for x, y, page, expected in ((240, 160, "face", ["pet_command"]),
+                                       (340, 17, "face", ["start", "stop"]),
+                                       (240, 146, "pet", ["pet_command"])):
+                    touch = tmp_path / "touch.txt"
+                    touch.write_text(f"face=idle\naudio=true\npaired=true\npage={page}\nadvance=300\n"
+                                     f"touch_down={x},{y}\nadvance=650\n"
+                                     f"touch_up={x},{y}\nadvance=200\n")
+                    proc = subprocess.run([str(binary), "--headless", "--scenario", str(touch)],
+                        env={**os.environ, "MUSE_UI_RUNTIME": runtime},
+                        capture_output=True, text=True, timeout=10)
+                    assert proc.returncode == 0, proc.stderr
+                    actions = []
+                    while True:
+                        try:
+                            actions.append(json.loads(receiver.recv(4096))["action"])
+                        except socket.timeout:
+                            break
+                    assert actions == expected, (x, y, actions)
 
     for name, digest in sorted(hashes.items()):
         print(f"{name}: {digest}")

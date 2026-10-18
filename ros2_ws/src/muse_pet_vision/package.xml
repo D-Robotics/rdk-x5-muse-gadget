@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>muse_pet_vision</name>
+  <version>0.1.0</version>
+  <description>ROS 2 vision events for the RDK X5 Muse desktop pet.</description>
+  <maintainer email="shockley6668@users.noreply.github.com">RDK X5 Muse Gadget contributors</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <exec_depend>ai_msgs</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+
+  <!-- Optional nodes enabled by start_gesture/start_yolo in the launch file. -->
+  <exec_depend>mono2d_body_detection</exec_depend>
+  <exec_depend>hand_lmk_detection</exec_depend>
+  <exec_depend>hand_gesture_detection</exec_depend>
+  <exec_depend>dnn_node_example</exec_depend>
+
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

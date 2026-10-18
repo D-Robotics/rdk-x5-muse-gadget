@@ -39,6 +39,7 @@ static volatile float s_progress;
 static volatile int64_t s_last_poke_us;
 static volatile int64_t s_happy_until_us;
 static volatile bool s_asleep;
+static volatile int s_pet_x;
 
 static portMUX_TYPE s_lock = portMUX_INITIALIZER_UNLOCKED;
 static char s_caption[MUSE_CAPTION_MAX];
@@ -245,4 +246,19 @@ float muse_state_happiness(void)
     }
     /* Ease out over the last 0.4 s. */
     return left > 0.4f ? 1.0f : left / 0.4f;
+}
+
+void muse_state_set_pet_x(int position)
+{
+    if (position < -100) {
+        position = -100;
+    } else if (position > 100) {
+        position = 100;
+    }
+    s_pet_x = position;
+}
+
+int muse_state_pet_x(void)
+{
+    return s_pet_x;
 }
