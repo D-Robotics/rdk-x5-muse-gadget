@@ -75,9 +75,10 @@ Installed TROS models load, with runtime/model compiler version warnings. These
 checks do not establish model accuracy, real audio, full display throughput or
 the assembled enclosure.
 
-Camera, perception and backend services are enabled for boot. After a reboot
-request, the Mac lost the USB network interface; post-reboot verification is
-pending reconnection.
+Reboot verification passed after preserving the vision launcher's executable
+permission: the window opened automatically with one frontend process; backend,
+camera and perception services were active with no vision-service restarts.
+The bridge reported `vision=ready` and received a real `person` detection.
 
 See [enclosure notes](ENCLOSURE.md) for the current mechanical revision, nominal
 fasteners and audio limitations. The camera result does not validate the CAD,
