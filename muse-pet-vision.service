@@ -10,8 +10,10 @@ User=sunrise
 Group=sunrise
 WorkingDirectory=/opt/muse-ui
 Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=HOME=/home/sunrise
 Environment=ROS_LOG_DIR=/run/muse-pet-vision/log
 Environment=MUSE_PET_ASSET_CACHE=/run/muse-pet-vision/assets
+Environment=TMPDIR=/run/muse-pet-vision
 EnvironmentFile=-/etc/default/muse-pet-vision
 ExecStart=/opt/muse-ui/scripts/start-vision.sh
 RuntimeDirectory=muse-pet-vision

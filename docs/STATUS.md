@@ -1,8 +1,8 @@
 # Snapshot: 18 October 2026
 
-The GS130WI dual-channel camera has now been brought up on the RDK X5 at
-1088×1280. The current repository adds the local pet interaction layer and the
-ROS 2 integration boundary around that verified camera input.
+The pet UI and perception stack are deployed on the RDK X5. The GS130WI
+publishes both 1088×1280 channels; body, hand landmark, gesture and YOLO nodes
+produce messages, and the pet bridge reports `vision=ready`.
 
 ## Implemented
 
@@ -17,6 +17,8 @@ ROS 2 integration boundary around that verified camera input.
   gesture/object topics and optional pipeline startup are configurable.
 - An opt-in colcon build and systemd service. It consumes a running camera and
   does not launch another `mipi_cam` instance.
+- A separate opt-in camera service with realtime timestamps and a common UDP
+  profile for the root camera and desktop-user perception processes.
 - ST7796S kernel DRM + GT911 touch quick installer for kernel 6.1.83 / CS1 wiring.
   Precompiled overlays/firmware are included; the pinned module downloads are
   checked by SHA-256, ARM64 ELF metadata and vermagic. Source rebuilds are optional.
@@ -27,8 +29,8 @@ ROS 2 integration boundary around that verified camera input.
 
 ## Not completed
 
-- Board validation of the complete gesture-to-action and YOLO-to-feeding paths,
-  including exact topics, installed models, latency and false triggers.
+- Physical gesture-to-action and YOLO-to-feeding tests, including latency,
+  recognition accuracy and false triggers.
 - GS130WI depth and IMU interactions.
 - An upstream Meta contribution for the full pet example.
 - Physical V08 assembly tests, pogo compression/contact and camera FOV checks.
@@ -50,10 +52,14 @@ These are separate profiles, not interchangeable presets. Start with the
 
 ## Verification
 
-- GS130WI dual-channel launch at 1088×1280: confirmed by the board user on
-  17 October. The repository does not yet contain a captured topic/latency log.
+- On-board image and perception subscription check on 18 October: both image
+  streams, `/muse/body`, `/muse/hand_landmarks`, `/muse/gestures` and
+  `/muse/objects` received. YOLO returned `person`; the backend reported ready.
+- X5 native frontend build, ROS colcon build and renderer CTest passed.
+- On-board Desktop close, launcher reopen and repeated-launch singleton checks
+  passed. The old display systemd service is disabled; XFCE starts the window.
 - macOS ARM64 LVGL/SDL frontend build: passed on 18 October.
-- 29 Python tests passed: pet state/timers, backend commands, real offline
+- 31 Python tests passed: pet state/timers, backend commands, real offline
   socket-to-frontend integration, vision gates, message parsing, launch
   construction and display installer fixtures.
 - Headless renderer CTest passed: seven deterministic visual scenarios,
@@ -65,12 +71,17 @@ These are separate profiles, not interchangeable presets. Start with the
   the disabled spidev node sharing the panel's chip select in an overlay.
 - Generated firmware matches the original 109-byte binary byte-for-byte.
 
-These checks do not prove the gesture/YOLO model installation, ROS topic mapping,
-real audio, full display throughput or the assembled enclosure.
+Installed TROS models load, with runtime/model compiler version warnings. These
+checks do not establish model accuracy, real audio, full display throughput or
+the assembled enclosure.
+
+Camera, perception and backend services are enabled for boot. After a reboot
+request, the Mac lost the USB network interface; post-reboot verification is
+pending reconnection.
 
 See [enclosure notes](ENCLOSURE.md) for the current mechanical revision, nominal
 fasteners and audio limitations. The camera result does not validate the CAD,
-audio layout or the remaining perception pipeline.
+audio layout or the complete physical interaction demo.
 
 V08 CAD checks passed for six closed STEP solids and six manifold STL meshes,
 49 sampled rigid shell-closing poses, seven clamp depth settings and the nominal

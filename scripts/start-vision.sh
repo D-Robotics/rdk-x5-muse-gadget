@@ -16,6 +16,7 @@ overlay_setup="${MUSE_PET_VISION_SETUP:-/opt/muse-ui/ros2_ws/install/setup.bash}
 source "$tros_setup"
 # shellcheck source=/dev/null
 source "$overlay_setup"
+source "$(dirname "${BASH_SOURCE[0]}")/ros-transport.sh"
 set -u
 
 args=(
@@ -23,13 +24,13 @@ args=(
     "right_topic:=${MUSE_PET_RIGHT_TOPIC:-/image_right_raw}"
     "gesture_topic:=${MUSE_PET_GESTURE_TOPIC:-/muse/gestures}"
     "object_topic:=${MUSE_PET_OBJECT_TOPIC:-/muse/objects}"
-    "extra_detector_topics:=${MUSE_PET_EXTRA_DETECTOR_TOPICS:-}"
     "socket_path:=${MUSE_PET_SOCKET_PATH:-/run/muse-ui/input.sock}"
     "start_gesture:=${MUSE_PET_START_GESTURE:-false}"
     "start_yolo:=${MUSE_PET_START_YOLO:-false}"
     "auto_discover:=${MUSE_PET_AUTO_DISCOVER:-false}"
 )
 
+[[ -z "${MUSE_PET_EXTRA_DETECTOR_TOPICS:-}" ]] || args+=("extra_detector_topics:=$MUSE_PET_EXTRA_DETECTOR_TOPICS")
 [[ -z "${MUSE_PET_MONO2D_MODEL_FILE:-}" ]] || args+=("mono2d_model_file:=$MUSE_PET_MONO2D_MODEL_FILE")
 [[ -z "${MUSE_PET_HAND_LMK_MODEL_FILE:-}" ]] || args+=("hand_lmk_model_file:=$MUSE_PET_HAND_LMK_MODEL_FILE")
 [[ -z "${MUSE_PET_GESTURE_MODEL_FILE:-}" ]] || args+=("gesture_model_file:=$MUSE_PET_GESTURE_MODEL_FILE")

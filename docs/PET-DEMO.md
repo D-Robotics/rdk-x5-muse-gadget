@@ -35,12 +35,22 @@ the complete pipeline. Match the TROS release to your board image.
 
 ```sh
 source /opt/tros/setup.bash 2>/dev/null || source /opt/tros/humble/setup.bash
-ros2 launch mipi_cam mipi_cam_dual_channel.launch.py \
-  mipi_image_width:=1088 mipi_image_height:=1280
+./scripts/start-camera.sh
 ```
 
-This is the user-confirmed camera command. Optionally append `dual_combine:=0`
-to suppress the unused combined image. Leave this terminal running.
+This wraps the user's working dual-channel launch with 1088×1280 images,
+`mipi_frame_ts_type:=realtime` and `dual_combine:=0`. Realtime timestamps are
+required by the bridge's stale-frame checks; default sensor timestamps use a
+different clock. Leave this terminal running.
+
+Both launchers use `scripts/fastdds.xml`: UDPv4 with data sharing disabled.
+The camera needs root access while perception runs as `sunrise`; TROS's default
+shared-memory profile did not deliver frames between these users on the test X5.
+Use the same profile for diagnostic subscribers:
+
+```sh
+source scripts/ros-transport.sh
+```
 
 Check the topics before starting perception:
 
@@ -70,12 +80,23 @@ This copies the project to `/opt/muse-ui`, builds only `muse_pet_vision`, and
 enables `muse-pet-vision.service`. It does not install TROS, launch the camera,
 or download gesture and YOLO models.
 
+For camera autostart, stop the foreground camera and install with both flags:
+
+```sh
+sudo env INSTALL_PET_CAMERA=1 INSTALL_PET_VISION=1 bash install.sh
+```
+
+This also enables `muse-pet-camera.service`. Do not run a second camera launch.
+Resolution, frame-rate request and combined-image settings are in
+`/etc/default/muse-pet-camera`.
+
 For a foreground run, stop the service and launch the same no-camera stack:
 
 ```sh
 sudo systemctl stop muse-pet-vision
 source /opt/tros/setup.bash 2>/dev/null || source /opt/tros/humble/setup.bash
 source /opt/muse-ui/ros2_ws/install/setup.bash
+source /opt/muse-ui/scripts/ros-transport.sh
 ros2 launch muse_pet_vision muse_pet_vision.launch.py \
   left_topic:=/image_left_raw right_topic:=/image_right_raw \
   gesture_topic:=/muse/gestures object_topic:=/muse/objects \
@@ -172,16 +193,17 @@ timers currently reset when the backend restarts.
 
 ```sh
 petctl status
-systemctl status muse-ui muse-pet-vision --no-pager
-journalctl -u muse-ui -u muse-pet-vision -n 100 --no-pager
+systemctl status muse-ui muse-pet-camera muse-pet-vision --no-pager
+journalctl -u muse-ui -u muse-pet-camera -u muse-pet-vision -n 100 --no-pager
 pactl info
 pactl list short sources
 pactl list short sinks
 ```
 
-The camera bring-up is confirmed. Gesture models, object models, audio devices,
-topic mapping and the complete physical demo still need validation on the same
-assembled unit.
+On the test X5, both image topics and all four perception topics delivered
+messages; YOLO detected a person and the bridge reported `vision=ready`.
+This confirms data flow, not recognition accuracy. Physical gesture-to-action,
+food confirmation and the selected audio hardware still need a live user test.
 
 Check the actual image orientation before testing gestures: 1088×1280 is a
 portrait-sized stream. Do not change rotation until you have inspected a frame.

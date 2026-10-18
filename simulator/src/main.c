@@ -680,7 +680,7 @@ int main(int argc, char **argv)
     sim_services_set_link_state(MUSE_LINK_CONNECTING);
     sim_services_set_wifi(MUSE_WIFI_CONNECTING, "RDK X5");
     sim_services_set_ble(MUSE_BLE_OFF, "RDK X5", 0);
-    muse_state_set_caption("");
+    muse_state_set_caption("%s", "");
 
     if (scenario && !run_scenario(scenario, !headless)) {
         return 2;

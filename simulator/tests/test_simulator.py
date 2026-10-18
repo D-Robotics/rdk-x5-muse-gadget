@@ -28,7 +28,8 @@ import tempfile
 
 WIDTH, HEIGHT = 480, 320
 HERE = Path(__file__).resolve().parent
-SCENARIOS = tuple(sorted((HERE / "scenarios").glob("*.txt")))
+SCENARIOS = tuple(sorted(path for path in (HERE / "scenarios").glob("*.txt")
+                         if not path.name.startswith(".")))
 
 
 def read_ppm(path: Path) -> bytes:

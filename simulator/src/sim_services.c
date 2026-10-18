@@ -378,7 +378,7 @@ void muse_settings_ui_tick(bool visible)
     snprintf(stats, sizeof(stats), "Hunger %d   Happy %d   Energy %d",
              s_pet_hunger, s_pet_happiness, s_pet_energy);
     lv_label_set_text(s_pet_stats_label, stats);
-    char detail[180];
+    char detail[192];
     snprintf(detail, sizeof(detail), "Vision: %s  |  Gesture: %s\nObject: %s  |  App: %s",
              s_vision, s_pet_gesture, s_pet_object, s_pet_app);
     lv_label_set_text(s_pet_detail_label, detail);

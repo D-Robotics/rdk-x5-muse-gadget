@@ -4,6 +4,11 @@ set -euo pipefail
 source_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 target_dir=/opt/muse-ui
 install_pet_vision="${INSTALL_PET_VISION:-0}"
+install_pet_camera="${INSTALL_PET_CAMERA:-0}"
+case "$install_pet_camera" in
+    0|1) ;;
+    *) echo 'INSTALL_PET_CAMERA must be 0 or 1.' >&2; exit 2 ;;
+esac
 case "$install_pet_vision" in
     0|1) ;;
     *) echo 'INSTALL_PET_VISION must be 0 or 1.' >&2; exit 2 ;;
@@ -23,7 +28,7 @@ cmake --build "$target_dir/build" --parallel 4
 cd "$target_dir"
 PYTHONPATH="$target_dir/sdk" "$target_dir/venv/bin/python" -m unittest test_backend -v
 PYTHONPATH="$target_dir/sdk" "$target_dir/venv/bin/python" -m unittest discover -s tests -v
-chmod 755 start-display.sh launch-display.py send.py petctl.py scripts/petctl scripts/start-vision.sh
+chmod 755 start-display.sh launch-display.py send.py petctl.py scripts/petctl scripts/start-vision.sh scripts/start-camera.sh
 install -m 755 scripts/petctl /usr/local/bin/petctl
 install -d -o sunrise -g sunrise /home/sunrise/.local/share/applications /home/sunrise/.config/autostart
 install -m 644 -o sunrise -g sunrise muse-ui.desktop /home/sunrise/.local/share/applications/muse-ui.desktop
@@ -31,10 +36,13 @@ install -m 644 -o sunrise -g sunrise muse-ui-autostart.desktop /home/sunrise/.co
 if [[ -d /home/sunrise/Desktop ]]; then
     install -m 755 -o sunrise -g sunrise muse-ui.desktop /home/sunrise/Desktop/Muse.desktop
 fi
-install -m 644 muse-ui.service muse-ui-display.service muse-pet-vision.service /etc/systemd/system/
+install -m 644 muse-ui.service muse-ui-display.service muse-pet-vision.service muse-pet-camera.service /etc/systemd/system/
 install -d -m 755 /etc/default
 if [[ ! -e /etc/default/muse-pet-vision ]]; then
     install -m 644 muse-pet-vision.env /etc/default/muse-pet-vision
+fi
+if [[ ! -e /etc/default/muse-pet-camera ]]; then
+    install -m 644 muse-pet-camera.env /etc/default/muse-pet-camera
 fi
 install -d -m 700 -o sunrise -g sunrise /home/sunrise/.config/pulse
 if [[ -f /home/sunrise/.config/pulse/default.pa ]] && ! grep -q 'sink_name=muse_output' /home/sunrise/.config/pulse/default.pa; then
@@ -49,6 +57,10 @@ systemctl daemon-reload
 systemctl enable muse-ui.service
 systemctl disable --now muse-ui-display.service
 systemctl restart muse-ui.service
+if [[ "$install_pet_camera" == 1 ]]; then
+    systemctl enable muse-pet-camera.service
+    systemctl restart muse-pet-camera.service
+fi
 if [[ "$install_pet_vision" == 1 ]]; then
     tros_setup="${TROS_SETUP:-/opt/tros/setup.bash}"
     if [[ ! -r "$tros_setup" && -z "${TROS_SETUP:-}" ]]; then
@@ -74,7 +86,8 @@ if [[ "$install_pet_vision" == 1 ]]; then
         cd "$target_dir/ros2_ws"
         colcon build --merge-install --packages-select muse_pet_vision
     )
-    systemctl enable --now muse-pet-vision.service
+    systemctl enable muse-pet-vision.service
+    systemctl restart muse-pet-vision.service
 fi
 runuser -u sunrise -- pkill -TERM -x muse_simulator || true
 runuser -u sunrise -- env DISPLAY=:0 XAUTHORITY=/home/sunrise/.Xauthority XDG_RUNTIME_DIR=/run/user/1000 sh -c 'nohup /opt/muse-ui/start-display.sh >/dev/null 2>&1 </dev/null &'

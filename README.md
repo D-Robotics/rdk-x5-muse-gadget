@@ -26,16 +26,16 @@ The installer builds the UI in `/opt/muse-ui`, installs `petctl`, adds the
 **Muse** desktop shortcut and enables autostart. It also installs the chat/audio
 backend and configures the desktop user's PulseAudio output.
 
-Start the GS130WI in a separate terminal using your working command:
+For a foreground camera run:
 
 ```sh
 source /opt/tros/setup.bash 2>/dev/null || source /opt/tros/humble/setup.bash
-ros2 launch mipi_cam mipi_cam_dual_channel.launch.py \
-  mipi_image_width:=1088 mipi_image_height:=1280
+./scripts/start-camera.sh
 ```
 
-You can add `dual_combine:=0` to skip the unused combined image. The pet uses
-the left image for perception and monitors both channels.
+The launcher uses 1088×1280, realtime timestamps and UDP transport so the root
+camera process can communicate with the desktop user's perception service.
+The pet uses the left image for perception and monitors both channels.
 
 The perception bridge is optional. It needs TROS Humble and `colcon`; gesture
 and YOLO packages and their model files must already be installed on the X5.
@@ -51,6 +51,10 @@ the project's no-camera launch file and only consumes existing ROS topics; it
 never starts a second `mipi_cam`. Topic and model settings live in
 `/etc/default/muse-pet-vision`. See [Pet demo](docs/PET-DEMO.md) for foreground
 launch and model configuration.
+
+To start the camera at boot too, stop any manually launched camera first, then
+run `sudo env INSTALL_PET_CAMERA=1 INSTALL_PET_VISION=1 bash install.sh`.
+Camera settings live in `/etc/default/muse-pet-camera`.
 
 A compatible microphone and speaker are needed for voice. The current plan uses a CTIA 3.5 mm TRRS microphone and a USB audio speaker. Set the recording device with `PULSE_SOURCE` and the playback device with `PULSE_SINK` in [muse-ui.service](muse-ui.service). The newly selected audio hardware has not been tested on the X5.
 
@@ -93,8 +97,8 @@ concealed cable routing and pogo contact need physical checking.
 ## Logs
 
 ```sh
-systemctl status muse-ui musegadget muse-pet-vision
-journalctl -u muse-ui -u muse-pet-vision -n 60 --no-pager
+systemctl status muse-ui musegadget muse-pet-camera muse-pet-vision
+journalctl -u muse-ui -u muse-pet-camera -u muse-pet-vision -n 60 --no-pager
 ```
 
 ## License
