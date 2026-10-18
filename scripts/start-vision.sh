@@ -28,6 +28,9 @@ args=(
     "start_gesture:=${MUSE_PET_START_GESTURE:-false}"
     "start_yolo:=${MUSE_PET_START_YOLO:-false}"
     "auto_discover:=${MUSE_PET_AUTO_DISCOVER:-false}"
+    "start_throttle:=${MUSE_PET_THROTTLE:-true}"
+    "camera_fps:=${MUSE_PET_INFERENCE_FPS:-10.0}"
+    "mono2d_image_gap:=${MUSE_PET_BODY_IMAGE_GAP:-0}"
 )
 
 [[ -z "${MUSE_PET_EXTRA_DETECTOR_TOPICS:-}" ]] || args+=("extra_detector_topics:=$MUSE_PET_EXTRA_DETECTOR_TOPICS")

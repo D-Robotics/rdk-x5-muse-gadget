@@ -56,12 +56,20 @@ To start the camera at boot too, stop any manually launched camera first, then
 run `sudo env INSTALL_PET_CAMERA=1 INSTALL_PET_VISION=1 bash install.sh`.
 Camera settings live in `/etc/default/muse-pet-camera`.
 
+For the small-screen recognition page and web preview, install with
+`sudo env INSTALL_PET_CAMERA=1 INSTALL_PET_VISION=1 INSTALL_PET_PREVIEW=1 bash install.sh`.
+This also requires the TROS `hobot_codec` and `websocket` packages. Open
+`http://<X5-IP>:8000/TogetheROS/` for separate object and hand/gesture views.
+Enable the installed models in `/etc/default/muse-pet-vision` as described in
+[Pet demo](docs/PET-DEMO.md).
+
 A compatible microphone and speaker are needed for voice. The current plan uses a CTIA 3.5 mm TRRS microphone and a USB audio speaker. Set the recording device with `PULSE_SOURCE` and the playback device with `PULSE_SINK` in [muse-ui.service](muse-ui.service). The newly selected audio hardware has not been tested on the X5.
 
 ## Controls
 
 - Tap the avatar to pet it. Hold the microphone icon to record; release to send.
-- Swipe left for feeding, sleep, focus timer and find-object controls.
+- Swipe left for the live recognition view. Tap **Controls** for feeding,
+  sleep, focus timer and find-object controls; **Vision** returns to the image.
 - Tap the speaker button to mute or unmute.
 - Tap **Desktop** or press **Esc** to close the window.
 - Double-click **Muse** on the desktop to reopen it.
@@ -97,8 +105,8 @@ concealed cable routing and pogo contact need physical checking.
 ## Logs
 
 ```sh
-systemctl status muse-ui musegadget muse-pet-camera muse-pet-vision
-journalctl -u muse-ui -u muse-pet-camera -u muse-pet-vision -n 60 --no-pager
+systemctl status muse-ui musegadget muse-pet-camera muse-pet-vision muse-pet-preview
+journalctl -u muse-ui -u muse-pet-vision -u muse-pet-preview -n 60 --no-pager
 ```
 
 ## License

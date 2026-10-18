@@ -174,7 +174,7 @@ static void usage(FILE *out, const char *argv0)
             "  pet_mode=MODE pet_x=-100..100 pet_hunger=0..100 pet_happiness=0..100\n"
             "  pet_energy=0..100 pet_object=NAME pet_gesture=NAME pet_timer=TEXT\n"
             "  pet_app=TEXT vision=TEXT\n"
-            "  page=face|pet touch_down=X,Y touch_up=X,Y\n"
+            "  page=face|vision|pet touch_down=X,Y touch_up=X,Y\n"
             "\n"
             "Interactive keys: F1..F7 select face states, H is happy, Space is\n"
             "push-to-talk, +/- change level, [/] change progress, S sleeps,\n"
@@ -403,7 +403,10 @@ static bool apply_setting(const char *key, const char *value, bool real_time)
     long number;
     float scalar;
     if (!strcmp(key, "page")) {
-        if (!strcmp(value, "pet")) muse_ui_show_settings();
+        if (!strcmp(value, "pet") || !strcmp(value, "vision")) {
+            sim_services_show_controls(!strcmp(value, "pet"));
+            muse_ui_show_settings();
+        }
         else if (!strcmp(value, "face")) muse_ui_show_face();
         else return false;
         return true;

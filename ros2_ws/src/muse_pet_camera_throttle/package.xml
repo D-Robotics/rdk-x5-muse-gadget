@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>muse_pet_camera_throttle</name>
+  <version>0.1.0</version>
+  <description>Limit stereo image delivery before Muse perception fan-out.</description>
+  <maintainer email="shockley6668@users.noreply.github.com">RDK X5 Muse Gadget contributors</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>

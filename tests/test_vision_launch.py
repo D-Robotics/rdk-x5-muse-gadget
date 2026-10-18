@@ -46,6 +46,14 @@ class LaunchTests(unittest.TestCase):
         nodes = launch._build(dict(launch.ARGUMENTS))
         self.assertEqual([node["package"] for node in nodes], ["muse_pet_vision"])
 
+    def test_throttle_changes_both_bridge_inputs_and_keeps_original_camera_inputs(self):
+        launch = self.load_launch({})
+        nodes = launch._build({**launch.ARGUMENTS, "start_throttle": "true"})
+        self.assertEqual(nodes[0]["package"], "muse_pet_camera_throttle")
+        self.assertEqual(nodes[0]["parameters"][0]["left_topic"], "/image_left_raw")
+        self.assertEqual(nodes[1]["parameters"][0]["left_topic"], "/muse/camera/left")
+        self.assertEqual(nodes[1]["parameters"][0]["right_topic"], "/muse/camera/right")
+
     def test_full_pipeline_remaps_left_eye_and_resolves_assets(self):
         with tempfile.TemporaryDirectory() as tmp:
             prefix = Path(tmp)
@@ -71,6 +79,12 @@ class LaunchTests(unittest.TestCase):
                 self.assertIn(("/image_raw", "/image_left_raw"), node["remappings"])
             config_path = nodes[-1]["parameters"][0]["config_file"]
             self.assertTrue(Path(json.loads(Path(config_path).read_text())["model_file"]).is_absolute())
+            with patch.dict("os.environ", {"MUSE_PET_ASSET_CACHE": str(prefix / "cache")}):
+                bounded = launch._build({**values, "start_throttle": "true"})
+            for node in bounded[2:]:
+                self.assertIn(("/image_raw", "/muse/camera/left"), node["remappings"])
+                if "ros_img_topic_name" in node["parameters"][0]:
+                    self.assertEqual(node["parameters"][0]["ros_img_topic_name"], "/muse/camera/left")
 
 
 if __name__ == "__main__":

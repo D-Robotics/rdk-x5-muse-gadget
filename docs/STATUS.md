@@ -19,6 +19,10 @@ produce messages, and the pet bridge reports `vision=ready`.
   does not launch another `mipi_cam` instance.
 - A separate opt-in camera service with realtime timestamps and a common UDP
   profile for the root camera and desktop-user perception processes.
+- A C++ stereo relay caps model inputs at 10 FPS before multi-node image copies.
+- An optional hardware-JPEG/TROS web preview with separate object and gesture
+  views, plus a native recognition page reached by swiping left. Results are
+  matched to image timestamps; stale screen images disappear after three seconds.
 - ST7796S kernel DRM + GT911 touch quick installer for kernel 6.1.83 / CS1 wiring.
   Precompiled overlays/firmware are included; the pinned module downloads are
   checked by SHA-256, ARM64 ELF metadata and vermagic. Source rebuilds are optional.
@@ -59,11 +63,15 @@ These are separate profiles, not interchangeable presets. Start with the
 - On-board Desktop close, launcher reopen and repeated-launch singleton checks
   passed. The old display systemd service is disabled; XFCE starts the window.
 - macOS ARM64 LVGL/SDL frontend build: passed on 18 October.
-- 31 Python tests passed: pet state/timers, backend commands, real offline
+- 36 Python tests passed on X5: pet state/timers, backend commands, real offline
   socket-to-frontend integration, vision gates, message parsing, launch
   construction and display installer fixtures.
+- Preview tests cover viewer isolation, timestamp rounding/expiry, JPEG rendering
+  and model-input throttling. Host tests skip the OpenCV rendering test when
+  OpenCV is absent; that test passed on X5.
 - Headless renderer CTest passed: seven deterministic visual scenarios,
-  invalid input checks, avatar/microphone touch routing and pet control buttons.
+  invalid input checks, avatar/microphone touch routing, pet control buttons,
+  native preview image loading and stale-image hiding.
 - Python syntax compilation, shell syntax and Git whitespace checks passed.
 - Four isolated installer tests passed: repeat install/restore, incorrect-kernel
   rejection, corrupt-download rejection and incomplete-overlay repair.
@@ -79,6 +87,23 @@ Reboot verification passed after preserving the vision launcher's executable
 permission: the window opened automatically with one frontend process; backend,
 camera and perception services were active with no vision-service restarts.
 The bridge reported `vision=ready` and received a real `person` detection.
+
+## Performance snapshot
+
+The unbounded preview run reached roughly 94–95°C and CPU frequency fell to
+600 MHz. BPU sysfs listed the body and YOLO processes using the accelerator
+(about 9–11% aggregate in those samples); image transport and CPU processing
+remained expensive.
+
+After adding the relay, runtime logs showed roughly 10 FPS for YOLO and gesture
+output. YOLO inference samples ranged from 9–23 ms, with complete pipeline
+samples around 93–146 ms. These are live log samples, not a sustained benchmark.
+JPEG encoding uses the hardware codec. The native preview uses quarter-size
+JPEG decode with one OpenCV thread, and the UI refresh limit is 8 Hz.
+
+The board has a heatsink without a fan. Temperature remained around 93°C under
+the combined workload, so sustained frame rate is still limited by cooling.
+Thermal protection was not changed.
 
 See [enclosure notes](ENCLOSURE.md) for the current mechanical revision, nominal
 fasteners and audio limitations. The camera result does not validate the CAD,

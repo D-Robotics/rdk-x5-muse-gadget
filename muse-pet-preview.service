@@ -1,0 +1,26 @@
+[Unit]
+Description=Muse camera and recognition web preview
+Wants=muse-pet-vision.service
+After=muse-pet-camera.service muse-pet-vision.service
+ConditionPathExists=/opt/muse-ui/ros2_ws/install/setup.bash
+
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/opt/muse-ui
+Environment=HOME=/home/sunrise
+Environment=ROS_LOG_DIR=/run/muse-pet-preview/log
+Environment=TMPDIR=/run/muse-pet-preview
+Environment=MUSE_PET_PREVIEW_RUNTIME=/run/muse-pet-preview
+EnvironmentFile=-/etc/default/muse-pet-vision
+ExecStart=/bin/bash /opt/muse-ui/scripts/start-preview.sh
+RuntimeDirectory=muse-pet-preview
+RuntimeDirectoryMode=0755
+Restart=always
+RestartSec=5
+TimeoutStopSec=15
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target

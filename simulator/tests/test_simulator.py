@@ -25,6 +25,8 @@ from pathlib import Path
 import subprocess
 import socket
 import tempfile
+import struct
+import time
 
 WIDTH, HEIGHT = 480, 320
 HERE = Path(__file__).resolve().parent
@@ -107,6 +109,23 @@ def main() -> None:
         # Real SDL pointer input must pet the avatar without recording audio.
         # Hold/release on the microphone must generate start/stop instead.
         with tempfile.TemporaryDirectory(dir="/tmp", prefix="mui-") as runtime:
+            preview = Path(runtime) / "vision.bmp"
+            pixels = b'\x00\x00\xff' * (480 * 256)
+            preview.write_bytes(struct.pack('<2sIHHI', b'BM', 54 + len(pixels), 0, 0, 54) +
+                struct.pack('<IiiHHIIiiII', 40, 480, 256, 1, 24, 0, len(pixels), 0, 0, 0, 0) + pixels)
+            vision = tmp_path / "vision.txt"
+            vision.write_text('face=idle\npage=vision\nadvance=500\n')
+            for stale in (False, True):
+                if stale:
+                    os.utime(preview, (time.time() - 5, time.time() - 5))
+                screenshot = tmp_path / f"vision-{stale}.ppm"
+                proc = subprocess.run([str(binary), '--headless', '--scenario', str(vision),
+                    '--screenshot', str(screenshot)], env={**os.environ, 'MUSE_UI_RUNTIME': runtime},
+                    capture_output=True, text=True, timeout=10)
+                assert proc.returncode == 0, proc.stderr
+                pixel = read_ppm(screenshot)[(100 * WIDTH + 20) * 3: (100 * WIDTH + 20) * 3 + 3]
+                is_red = pixel[0] > 200 and pixel[1] < 20 and pixel[2] < 20
+                assert is_red != stale, ('native preview stale handling', stale, pixel)
             with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as receiver:
                 receiver.bind(str(Path(runtime) / "input.sock"))
                 receiver.settimeout(.1)

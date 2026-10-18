@@ -14,7 +14,15 @@
  * limitations under the License.
  */
 
+#ifdef __APPLE__
+#define _DARWIN_C_SOURCE
+#else
+#define _POSIX_C_SOURCE 200809L
+#endif
 #include "sim_services.h"
+#include <SDL.h>
+#include <sys/stat.h>
+#include <time.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -24,6 +32,7 @@
 #include "muse_menu.h"
 #include "muse_settings.h"
 #include "muse_settings_ui.h"
+#include "src/misc/cache/instance/lv_image_cache.h"
 
 #define SIM_DEFAULT_NAME "MuseGadget-SIM001"
 #define SIM_DEFAULT_SSID "Muse Simulator"
@@ -62,6 +71,83 @@ static bool s_pet_active;
 static lv_obj_t *s_pet_status_label;
 static lv_obj_t *s_pet_stats_label;
 static lv_obj_t *s_pet_detail_label;
+static lv_obj_t *s_controls_root, *s_preview_root, *s_preview_image, *s_preview_wait;
+static bool s_controls_visible;
+static time_t s_preview_mtime;
+static long s_preview_nsec;
+static uint8_t s_preview_pixels[480 * 256 * 2];
+static lv_image_dsc_t s_preview_dsc = {
+    .header = {.magic = LV_IMAGE_HEADER_MAGIC, .cf = LV_COLOR_FORMAT_RGB565,
+               .w = 480, .h = 256, .stride = 960},
+    .data_size = sizeof(s_preview_pixels), .data = s_preview_pixels,
+};
+
+void sim_services_show_controls(bool controls)
+{
+    s_controls_visible = controls;
+    if (s_controls_root) lv_obj_set_flag(s_controls_root, LV_OBJ_FLAG_HIDDEN, !controls);
+    if (s_preview_root) lv_obj_set_flag(s_preview_root, LV_OBJ_FLAG_HIDDEN, controls);
+}
+
+static void on_preview_toggle(lv_event_t *event)
+{
+    (void)event;
+    sim_services_show_controls(!s_controls_visible);
+}
+
+static void preview_toggle(lv_obj_t *parent, const char *text, lv_align_t align)
+{
+    lv_obj_t *button = lv_button_create(parent);
+    lv_obj_set_size(button, 96, 30);
+    lv_obj_align(button, align, align == LV_ALIGN_TOP_RIGHT ? -8 : 8, 6);
+    lv_obj_set_style_bg_color(button, lv_color_hex(0x211d35), 0);
+    lv_obj_set_style_radius(button, 10, 0);
+    lv_obj_add_event_cb(button, on_preview_toggle, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *label = lv_label_create(button);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_14, 0);
+    lv_label_set_text(label, text);
+    lv_obj_center(label);
+}
+
+static void poll_preview(void)
+{
+    const char *runtime = getenv("MUSE_UI_RUNTIME");
+    char path[512];
+    snprintf(path, sizeof(path), "%s/vision.bmp", runtime ? runtime : "/run/muse-pet-preview");
+    struct stat info;
+    if (stat(path, &info) || time(NULL) - info.st_mtime > 3 || info.st_size > 1024 * 1024) {
+        lv_obj_add_flag(s_preview_image, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(s_preview_wait, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+#ifdef __APPLE__
+    long nsec = info.st_mtimespec.tv_nsec;
+#else
+    long nsec = info.st_mtim.tv_nsec;
+#endif
+    if (info.st_mtime == s_preview_mtime && nsec == s_preview_nsec) return;
+    SDL_Surface *loaded = SDL_LoadBMP(path);
+    if (!loaded) return;
+    if (loaded->w != 480 || loaded->h != 256) {
+        SDL_FreeSurface(loaded);
+        return;
+    }
+    SDL_Surface *converted = SDL_ConvertSurfaceFormat(loaded, SDL_PIXELFORMAT_RGB565, 0);
+    SDL_FreeSurface(loaded);
+    if (!converted) return;
+    lv_image_cache_drop(&s_preview_dsc);
+    for (int row = 0; row < 256; row++) {
+        memcpy(s_preview_pixels + row * 960,
+               (uint8_t *)converted->pixels + row * converted->pitch, 960);
+    }
+    SDL_FreeSurface(converted);
+    s_preview_mtime = info.st_mtime;
+    s_preview_nsec = nsec;
+    lv_image_set_src(s_preview_image, &s_preview_dsc);
+    lv_obj_invalidate(s_preview_image);
+    lv_obj_remove_flag(s_preview_image, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(s_preview_wait, LV_OBJ_FLAG_HIDDEN);
+}
 
 void sim_services_set_audio(bool available)
 {
@@ -327,6 +413,31 @@ static void add_pet_button(lv_obj_t *parent, const char *text, const char *actio
 void muse_settings_ui_build(lv_obj_t *tile)
 {
     lv_obj_set_style_bg_color(tile, lv_color_black(), 0);
+    s_preview_root = lv_obj_create(tile);
+    lv_obj_remove_style_all(s_preview_root);
+    lv_obj_set_size(s_preview_root, 480, 320);
+    lv_obj_remove_flag(s_preview_root, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_t *vision_title = lv_label_create(s_preview_root);
+    lv_label_set_text(vision_title, "VISION");
+    lv_obj_set_style_text_font(vision_title, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(vision_title, lv_color_hex(0xa77dff), 0);
+    lv_obj_align(vision_title, LV_ALIGN_TOP_LEFT, 12, 12);
+    preview_toggle(s_preview_root, "Controls", LV_ALIGN_TOP_RIGHT);
+    s_preview_image = lv_image_create(s_preview_root);
+    lv_obj_set_pos(s_preview_image, 0, 38);
+    lv_obj_remove_flag(s_preview_image, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(s_preview_image, LV_OBJ_FLAG_HIDDEN);
+    s_preview_wait = lv_label_create(s_preview_root);
+    lv_label_set_text(s_preview_wait, "Waiting for camera");
+    lv_obj_set_style_text_color(s_preview_wait, lv_color_hex(0x8b84a8), 0);
+    lv_obj_center(s_preview_wait);
+
+    s_controls_root = lv_obj_create(tile);
+    lv_obj_remove_style_all(s_controls_root);
+    lv_obj_set_size(s_controls_root, 480, 320);
+    lv_obj_remove_flag(s_controls_root, LV_OBJ_FLAG_SCROLLABLE);
+    tile = s_controls_root;
+    preview_toggle(tile, "Vision", LV_ALIGN_TOP_LEFT);
     lv_obj_t *title = lv_label_create(tile);
     lv_label_set_text(title, "PET CONTROLS");
     lv_obj_set_style_text_color(title, lv_color_hex(0xa77dff), 0);
@@ -364,11 +475,16 @@ void muse_settings_ui_build(lv_obj_t *tile)
     lv_obj_set_style_text_align(s_pet_detail_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(s_pet_detail_label, lv_color_hex(0x8b84a8), 0);
     lv_obj_align(s_pet_detail_label, LV_ALIGN_BOTTOM_MID, 0, -27);
+    sim_services_show_controls(false);
 }
 
 void muse_settings_ui_tick(bool visible)
 {
     if (!visible || !s_pet_status_label) {
+        return;
+    }
+    if (!s_controls_visible) {
+        poll_preview();
         return;
     }
     char status[96];

@@ -1,11 +1,13 @@
 # Pet demo
 
-The demo has three independent processes:
+The demo separates capture, perception and display:
 
 - `mipi_cam` publishes the GS130WI channels.
 - `muse_pet_vision` consumes existing ROS topics and sends timestamped events
   to the pet state machine.
 - `muse-ui` owns the pet state, touch input, Muse chat, captions and audio.
+- `muse-pet-preview` encodes the left image as JPEG with the hardware codec,
+  serves the TROS web viewer and produces the small-screen recognition image.
 
 The perception launch does not start or stop the camera.
 
@@ -76,7 +78,7 @@ sudo apt-get install -y python3-colcon-common-extensions
 sudo env INSTALL_PET_VISION=1 bash install.sh
 ```
 
-This copies the project to `/opt/muse-ui`, builds only `muse_pet_vision`, and
+This copies the project to `/opt/muse-ui`, builds `muse_pet_vision` and its image relay, and
 enables `muse-pet-vision.service`. It does not install TROS, launch the camera,
 or download gesture and YOLO models.
 
@@ -119,7 +121,48 @@ systemctl status muse-pet-vision --no-pager
 journalctl -u muse-pet-vision -n 80 --no-pager
 ```
 
-## 3. Check the pet without vision
+## 3. Recognition preview
+
+Install with `INSTALL_PET_PREVIEW=1` in addition to the vision flag. This needs
+the installed TROS `hobot_codec` and `websocket` packages; the installer adds
+Python OpenCV. The service reuses the camera and inference results.
+
+```sh
+sudo env INSTALL_PET_VISION=1 INSTALL_PET_PREVIEW=1 bash install.sh
+systemctl status muse-pet-preview --no-pager
+```
+
+On the SPI screen, swipe left to **Vision**. The image shows detection boxes,
+hand landmarks and current matched labels. **Controls** opens the pet buttons;
+**Vision** returns to the preview. Images expire after three seconds, so a
+stopped camera is not shown as live.
+
+Open `http://<X5-IP>:8000/TogetheROS/` for two views of the same left image:
+YOLO objects on the left and hands/gestures on the right. HTTP uses port 8000;
+the image sockets use 8080 and 8082. Nginx runs in the service rather than
+being left behind by the vendor launch file. Installed viewer files are not edited.
+
+The preview matches AI results to their original frame timestamps, tolerating
+up to one millisecond of model timestamp rounding. Unmatched results are not
+painted onto a different frame. Empty results keep the image moving when no
+hand or object is detected. The matching window is 250 ms, not a latency claim.
+The native screen is limited by the UI's 8 Hz refresh; its JPEG decoder uses
+quarter-resolution decoding and one OpenCV thread.
+
+The service launcher limits image delivery to the model nodes to a target of
+10 FPS through a small C++ relay. The sensor may still capture at 30 FPS.
+Settings are `MUSE_PET_THROTTLE`, `MUSE_PET_INFERENCE_FPS` and
+`MUSE_PET_BODY_IMAGE_GAP` in `/etc/default/muse-pet-vision`. The relay preserves
+resolution and timestamps and uses depth-one queues before the expensive
+multi-node fan-out. A foreground perception launch can enable it with
+`start_throttle:=true mono2d_image_gap:=0`.
+
+The models run on the BPU and JPEG encoding uses the hardware codec. ROS image
+copies, model pre/postprocessing, the small-screen JPEG decoder and drawing
+still use CPU. Check temperature and CPU frequency when judging smoothness;
+a busy BPU is not required for the image pipeline to be CPU-bound.
+
+## 4. Check the pet without vision
 
 `petctl` is useful before enabling models:
 

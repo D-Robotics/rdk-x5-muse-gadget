@@ -20,6 +20,7 @@ ARGUMENTS = {
     "gesture_stable_sec": "0.25", "gesture_lost_sec": "0.4",
     "gesture_repeat_sec": "0.5", "object_confidence": "0.6",
     "start_gesture": "false", "start_yolo": "false",
+    "start_throttle": "false", "camera_fps": "10.0",
     "mono2d_model_file": "", "mono2d_image_gap": "2",
     "hand_lmk_model_file": "", "gesture_model_file": "",
     "gesture_model_name": "", "yolo_config_file": "", "log_level": "warn",
@@ -41,6 +42,12 @@ def _build(context):
     def model(root, key, filename):
         return require_file(values[key] or root / "config" / filename, key)
 
+    nodes = []
+    if enabled("start_throttle"):
+        nodes.append(Node(package="muse_pet_camera_throttle", executable="camera_throttle",
+            output="screen", parameters=[{"left_topic": values["left_topic"],
+                "right_topic": values["right_topic"], "fps": float(values["camera_fps"])}]))
+        values["left_topic"], values["right_topic"] = "/muse/camera/left", "/muse/camera/right"
     bridge_params = {key: values[key] for key in (
         "left_topic", "right_topic", "gesture_topic", "object_topic",
         "extra_detector_topics", "socket_path")}
@@ -48,8 +55,8 @@ def _build(context):
     for key in ("camera_stale_sec", "gesture_stable_sec", "gesture_lost_sec",
                 "gesture_repeat_sec", "object_confidence"):
         bridge_params[key] = float(values[key])
-    nodes = [Node(package="muse_pet_vision", executable="muse_pet_vision_node",
-                  output="screen", parameters=[bridge_params])]
+    nodes.append(Node(package="muse_pet_vision", executable="muse_pet_vision_node",
+                  output="screen", parameters=[bridge_params]))
 
     def perception(package, executable, name, root, parameters):
         return Node(package=package, executable=executable, name=name,
