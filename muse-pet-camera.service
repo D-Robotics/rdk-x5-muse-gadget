@@ -9,6 +9,7 @@ WorkingDirectory=/opt/muse-ui
 Environment=HOME=/root
 Environment=ROS_LOG_DIR=/run/muse-pet-camera/log
 EnvironmentFile=-/etc/default/muse-pet-camera
+EnvironmentFile=-/etc/default/muse-pet-depth-camera
 ExecStart=/opt/muse-ui/scripts/start-camera.sh
 RuntimeDirectory=muse-pet-camera
 RuntimeDirectoryMode=0755

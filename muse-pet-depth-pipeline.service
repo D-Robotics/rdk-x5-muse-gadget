@@ -1,0 +1,17 @@
+[Unit]
+Description=On-demand MagicBox StereoNet depth pipeline
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/muse-ui
+Environment=HOME=/root
+Environment=ROS_LOG_DIR=/run/muse-pet-depth/log
+Environment=OMP_NUM_THREADS=1
+Environment=OPENBLAS_NUM_THREADS=1
+ExecStartPre=/usr/bin/python3 /opt/muse-ui/scripts/depth-session.py prepare
+ExecStart=/usr/bin/python3 /opt/muse-ui/scripts/run-depth.py
+ExecStopPost=/usr/bin/python3 /opt/muse-ui/scripts/depth-session.py resume
+TimeoutStartSec=100
+TimeoutStopSec=100
+KillMode=mixed

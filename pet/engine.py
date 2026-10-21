@@ -21,6 +21,7 @@ class PetEngine:
 
     GESTURES = {
         "palm": "Palm",
+        "palmapproach": "PalmApproach",
         "thumbleft": "ThumbLeft",
         "thumbright": "ThumbRight",
         "okay": "Okay",
@@ -30,19 +31,21 @@ class PetEngine:
     }
     GESTURE_ACTIONS = {
         "Palm": "wake",
+        "PalmApproach": "cuddle",
         "ThumbLeft": "move_left",
         "ThumbRight": "move_right",
         "Okay": "feed",
         "ThumbUp": "pet",
-        "Victory": "find",
+        "Victory": "dance",
     }
     DEFAULT_COOLDOWNS = {
         "Palm": 1.0,
+        "PalmApproach": 1.0,
         "ThumbLeft": 0.35,
         "ThumbRight": 0.35,
         "Okay": 3.0,
         "ThumbUp": 1.0,
-        "Victory": 2.0,
+        "Victory": 4.0,
     }
 
     def __init__(
@@ -83,6 +86,8 @@ class PetEngine:
         self.last_action = "boot"
         self.last_gesture = ""
         self.last_food = ""
+        self.look_x = self.look_y = 0.0
+        self._attention_seen: float | None = None
         self.pending_food = ""
         self._pending_food_until: float | None = None
 
@@ -119,6 +124,9 @@ class PetEngine:
         return "idle"
 
     def _tick_at(self, now: float) -> None:
+        if self._attention_seen is not None and now - self._attention_seen > .65:
+            self._attention_seen = None
+            self.look_x = self.look_y = 0.0
         if self._vision_seen is not None and now - self._vision_seen > 3.0:
             self.vision = "offline"
         if self._motion_until is not None and now >= self._motion_until:
@@ -175,6 +183,9 @@ class PetEngine:
             "last_action": self.last_action,
             "last_gesture": self.last_gesture,
             "last_food": self.last_food,
+            "hand_present": self._attention_seen is not None and self.awake,
+            "look_x": self.look_x,
+            "look_y": self.look_y,
             "pending_food": self.pending_food,
             "timer_state": self.timer_state,
             "timer_remaining": remaining,
@@ -219,6 +230,9 @@ class PetEngine:
             "pet_last_action": str(state["last_action"]),
             "pet_last_gesture": str(state["last_gesture"]),
             "pet_last_food": str(state["last_food"]),
+            "pet_hand_present": "true" if state["hand_present"] else "false",
+            "pet_look_x": str(round(state["look_x"] * 100)),
+            "pet_look_y": str(round(state["look_y"] * 100)),
             "pet_pending_food": str(state["pending_food"]),
             "pet_timer_state": str(state["timer_state"]),
             "pet_timer_remaining": str(state["timer_remaining"]),
@@ -233,9 +247,9 @@ class PetEngine:
         current = self._now(now)
         self._tick_at(current)
         self.awake = True
-        self.activity = self._resting_activity()
+        self.activity = "waking"
         self.last_action = "wake"
-        self._activity_until = None
+        self._activity_until = current + 1.2
         return self._snapshot(current)
 
     def sleep(self, *, now: float | None = None) -> dict[str, Any]:
@@ -257,6 +271,36 @@ class PetEngine:
         self.activity = "happy"
         self.last_action = "pet"
         self._activity_until = current + 2.0
+        return self._snapshot(current)
+
+    def cuddle(self, *, now: float | None = None) -> dict[str, Any]:
+        current = self._now(now)
+        self._tick_at(current)
+        self.awake = True
+        self.direction = "stop"
+        self._motion_until = None
+        self.happiness = min(100, self.happiness + 5)
+        self.activity = "cuddling"
+        self.last_action = "cuddle"
+        self._activity_until = current + 2.2
+        return self._snapshot(current)
+
+    def perform(self, activity: str, *, now: float | None = None) -> dict[str, Any]:
+        durations = {"dancing": 5.0, "stretching": 3.5, "curious": 4.0}
+        if activity not in durations:
+            raise PetCommandError("unknown activity")
+        current = self._now(now)
+        self._tick_at(current)
+        self.awake = True
+        self.direction = "stop"
+        self._motion_until = None
+        self.activity = activity
+        self.last_action = activity
+        self._activity_until = current + durations[activity]
+        if activity == "dancing":
+            self.energy = max(0, self.energy - 3)
+        elif activity == "stretching":
+            self.energy = min(100, self.energy + 2)
         return self._snapshot(current)
 
     def move(self, direction: str, *, now: float | None = None) -> dict[str, Any]:
@@ -327,7 +371,8 @@ class PetEngine:
         self.timer_state = "cancelled"
         self.timer_duration = 0
         self.last_action = "timer_cancel"
-        self.activity = self._resting_activity()
+        self.activity = "happy" if self.awake else "sleeping"
+        self._activity_until = current + 1.0 if self.awake else None
         return self._snapshot(current)
 
     def find(self, target: str = "banana", *, now: float | None = None) -> dict[str, Any]:
@@ -366,6 +411,12 @@ class PetEngine:
 
     def _gesture(self, name: str, now: float) -> tuple[bool, str, str]:
         action = self.GESTURE_ACTIONS[name]
+        if action == "wake" and self.awake:
+            return False, "already_awake", action
+        protected = self.activity in ("eating", "cuddling", "dancing", "stretching")
+        if protected and self._activity_until is not None and now < self._activity_until:
+            if not (action == "cuddle" and self.activity == "cuddling"):
+                return False, "busy", action
         if action == "wake":
             self.wake(now=now)
         elif action == "move_left":
@@ -379,11 +430,13 @@ class PetEngine:
             except PetCommandError as exc:
                 return False, "sleeping", action
         elif action == "feed":
-            if not self.pending_food:
-                return False, "no_pending_food", action
-            self.feed(self.pending_food, now=now)
+            self.feed(self.pending_food or "snack", now=now)
         elif action == "pet":
             self.pet(now=now)
+        elif action == "cuddle":
+            self.cuddle(now=now)
+        elif action == "dance":
+            self.perform("dancing", now=now)
         elif action == "find":
             self.find("banana", now=now)
         self.last_gesture = name
@@ -417,6 +470,16 @@ class PetEngine:
             self._seen_events[event_id] = now
 
         kind = str(event.get("type", event.get("kind", ""))).strip().lower()
+        if kind == "attention":
+            try:
+                x, y = float(event["x"]), float(event["y"])
+            except (KeyError, ValueError, TypeError):
+                return self._event_result(False, "invalid_position", "attention", now)
+            if not all(math.isfinite(v) and -1 <= v <= 1 for v in (x, y)):
+                return self._event_result(False, "invalid_position", "attention", now)
+            self.look_x, self.look_y = x, y
+            self._attention_seen = now
+            return self._event_result(True, "accepted", "attention", now)
         if kind == "gesture":
             raw_name = str(event.get("name", event.get("gesture", ""))).strip()
             name = self.GESTURES.get(raw_name.replace("_", "").replace("-", "").lower())
@@ -500,7 +563,12 @@ class PetEngine:
         if name == "pet":
             if positional:
                 raise PetCommandError("pet takes no arguments")
-            return self.pet()
+            return self.cuddle()
+        if name in ("play", "dance", "stretch", "look"):
+            if positional:
+                raise PetCommandError(f"{name} takes no arguments")
+            return self.perform({"play": "dancing", "dance": "dancing",
+                                 "stretch": "stretching", "look": "curious"}[name])
         if name == "move":
             direction = params.get("direction", positional[0] if positional else "")
             if len(positional) > 1:

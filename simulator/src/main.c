@@ -46,6 +46,7 @@
 #include "sim_platform.h"
 #include "esp_timer.h"
 #include "sim_services.h"
+#include "sim_damage.h"
 
 #define FRAME_STEP_MS 5
 
@@ -174,7 +175,7 @@ static void usage(FILE *out, const char *argv0)
             "  pet_mode=MODE pet_x=-100..100 pet_hunger=0..100 pet_happiness=0..100\n"
             "  pet_energy=0..100 pet_object=NAME pet_gesture=NAME pet_timer=TEXT\n"
             "  pet_app=TEXT vision=TEXT\n"
-            "  page=face|vision|pet touch_down=X,Y touch_up=X,Y\n"
+            "  page=face|vision|pet|depth touch_down=X,Y touch_up=X,Y\n"
             "\n"
             "Interactive keys: F1..F7 select face states, H is happy, Space is\n"
             "push-to-talk, +/- change level, [/] change progress, S sleeps,\n"
@@ -193,8 +194,9 @@ static void render_for(uint32_t duration_ms, bool real_time)
     uint32_t elapsed = 0;
     while (!s_quit && elapsed < duration_ms) {
         uint32_t step = duration_ms - elapsed;
-        if (step > FRAME_STEP_MS) {
-            step = FRAME_STEP_MS;
+        uint32_t max_step = real_time ? 20 : FRAME_STEP_MS;
+        if (step > max_step) {
+            step = max_step;
         }
         sim_time_advance_us((int64_t)step * 1000);
         if (s_live_state) poll_live_state();
@@ -228,7 +230,8 @@ static bool write_snapshot(const char *path)
         fprintf(stderr, "could not allocate simulator screenshot\n");
         return false;
     }
-    if (SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_RGB24, pixels,
+    if (!sim_damage_read_rgb(pixels, width, height) &&
+        SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_RGB24, pixels,
                              (int)row_bytes) != 0) {
         fprintf(stderr, "could not capture simulator screen: %s\n", SDL_GetError());
         free(pixels);
@@ -408,6 +411,7 @@ static bool apply_setting(const char *key, const char *value, bool real_time)
             muse_ui_show_settings();
         }
         else if (!strcmp(value, "face")) muse_ui_show_face();
+        else if (!strcmp(value, "depth")) muse_ui_show_depth();
         else return false;
         return true;
     }
@@ -564,6 +568,7 @@ static bool run_scenario(const char *path, bool real_time)
 
 static int event_watch(void *userdata, SDL_Event *event)
 {
+    sim_damage_event(event);
     (void)userdata;
     if (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
         muse_backend_talk(false);
@@ -694,8 +699,13 @@ int main(int argc, char **argv)
             return 1;
         }
     } else {
+        sim_time_use_realtime(true);
         while (!s_quit) {
-            render_for(FRAME_STEP_MS, true);
+            if (s_live_state) poll_live_state();
+            uint32_t next = lv_timer_handler();
+            /* Sleep until the next timer, retaining responsive touch input.
+             * Rendering time already advances the monotonic clock. */
+            SDL_Delay(next > 10 ? 10 : (next ? next : 1));
         }
     }
 

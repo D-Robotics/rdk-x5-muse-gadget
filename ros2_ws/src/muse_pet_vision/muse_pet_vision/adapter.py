@@ -13,6 +13,7 @@ import json
 import math
 import socket
 from typing import Any, Iterable, Mapping, Sequence
+from .palm_motion import PalmApproachGate, palm_samples
 
 
 IMAGE_TYPE = "sensor_msgs/msg/Image"
@@ -274,7 +275,8 @@ class StableGestureGate:
             self._candidate_track = track_id
             self._candidate_since = float(now)
             return []
-        if now - self._candidate_since < self.stable_for:
+        required = max(self.stable_for, .6) if gesture in ("okay", "victory") else self.stable_for
+        if now - self._candidate_since < required:
             return []
         if gesture == self._active:
             if (
@@ -292,7 +294,7 @@ class StableGestureGate:
                 confidence,
                 float(now),
                 stamp_ns,
-                round(self.stable_for * 1000),
+                round(required * 1000),
             )
         ]
 
@@ -411,6 +413,22 @@ class PetVisionAdapter:
             food_ttl,
         )
         self._last_health = float("-inf")
+        self.palm_motion = PalmApproachGate()
+        self._last_attention = float("-inf")
+
+    def hand_motion(self, message: Any, width: int, height: int,
+                    now: float, stamp_ns: int) -> list[dict[str, Any]]:
+        stroke = self.palm_motion.observe(palm_samples(message, width, height), now)
+        events = []
+        if stroke is not None:
+            events.append(_event("gesture", now, stamp_ns, f"palm-approach:{stroke['track_id']}:{stamp_ns}",
+                                 name="PalmApproach", stable_ms=250, **stroke))
+        if self.palm_motion.present and now - self._last_attention >= .25:
+            cx, cy = self.palm_motion.center
+            events.append(_event("attention", now, stamp_ns, f"attention:{stamp_ns}",
+                                 x=round(2 * cx - 1, 3), y=round(2 * cy - 1, 3)))
+            self._last_attention = now
+        return events
 
     def image(
         self,
@@ -432,6 +450,10 @@ class PetVisionAdapter:
         confidence: float | None = None,
     ) -> list[dict[str, Any]]:
         events = []
+        kind = normalize_gesture(value)
+        if self.palm_motion.present and (kind in ("thumb_up", "okay", "victory") or
+                                        (kind == "palm" and self.palm_motion.near)):
+            value = None  # A moving open palm is handled by the approach gate.
         for activation in self.gestures.observe(
             value, now, stamp_ns, track_id=track_id, confidence=confidence
         ):
@@ -472,6 +494,7 @@ class PetVisionAdapter:
         return events
 
     def tick(self, now: float, stamp_ns: int) -> list[dict[str, Any]]:
+        self.palm_motion.expire(now)
         events = self.camera.tick(now, stamp_ns)
         for activation in self.gestures.tick(now, stamp_ns):
             events.extend(self._gesture_events(activation))

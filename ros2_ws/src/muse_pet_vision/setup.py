@@ -23,6 +23,7 @@ setup(
     entry_points={
         "console_scripts": [
             "muse_pet_vision_node = muse_pet_vision.node:main",
+            "muse_pet_depth_frames = muse_pet_vision.depth_frames:main",
             "muse_pet_preview_frames = muse_pet_vision.preview_frames:main",
         ],
     },

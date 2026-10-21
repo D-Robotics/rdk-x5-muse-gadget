@@ -25,7 +25,7 @@ def main():
                 sink.send(event)
 
         def gesture(value):
-            for _ in range(5):
+            for _ in range(9):
                 send(adapter.gesture(value, time.monotonic(), time.time_ns()))
                 time.sleep(.1)
 

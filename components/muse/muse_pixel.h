@@ -41,6 +41,16 @@ typedef struct {
     bool sleeping;
     bool eating;
     bool moving;
+    bool finding;
+    bool focusing;
+    bool waking;
+    bool cuddling;
+    bool dancing;
+    bool stretching;
+    bool curious;
+    bool attentive;
+    float look_x, look_y;
+    float action_t;
 } muse_pose_t;
 
 /* Accent colour of a mode (for the surrounding UI), as 0xRRGGBB. */

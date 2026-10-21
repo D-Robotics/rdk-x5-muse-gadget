@@ -8,6 +8,23 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class StartupTests(unittest.TestCase):
+    def test_preview_uses_demand_gated_stream_with_default_relay(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            setup = folder / "setup.bash"
+            setup.write_text(":\n")
+            ros2 = folder / "ros2"
+            ros2.write_text("#!/bin/sh\nprintf '%s\\n' \"$@\"\n")
+            ros2.chmod(0o755)
+            env = {**os.environ, "TROS_SETUP": str(setup), "MUSE_PET_TRANSPORT": "udp",
+                   "MUSE_PET_TRANSPORT_CONFIG": str(folder / "missing.env"),
+                   "MUSE_PET_VISION_SETUP": str(setup),
+                   "PATH": str(folder) + os.pathsep + os.environ["PATH"]}
+            for throttle, expected in (("true", "/muse/camera/preview"), ("false", "/image_left_raw")):
+                result = subprocess.run(["bash", str(ROOT / "scripts/start-preview.sh")],
+                    env={**env, "MUSE_PET_THROTTLE": throttle}, capture_output=True, text=True, check=True)
+                self.assertIn(f"left_topic:={expected}", result.stdout.splitlines())
+
     def test_camera_uses_realtime_stamps_and_cross_user_transport(self):
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)
@@ -16,7 +33,8 @@ class StartupTests(unittest.TestCase):
             ros2 = folder / "ros2"
             ros2.write_text("#!/bin/sh\nprintf '%s\\n' \"$FASTRTPS_DEFAULT_PROFILES_FILE\" \"$ROS_DISABLE_LOANED_MESSAGES\" \"$@\"\n")
             ros2.chmod(0o755)
-            env = {**os.environ, "TROS_SETUP": str(setup),
+            env = {**os.environ, "TROS_SETUP": str(setup), "MUSE_PET_TRANSPORT": "udp",
+                   "MUSE_PET_TRANSPORT_CONFIG": str(folder / "missing.env"),
                    "PATH": str(folder) + os.pathsep + os.environ["PATH"]}
             result = subprocess.run(["bash", str(ROOT / "scripts/start-camera.sh")],
                 env=env, capture_output=True, text=True, check=True)
@@ -26,6 +44,22 @@ class StartupTests(unittest.TestCase):
             self.assertIn("mipi_frame_ts_type:=realtime", args)
             self.assertIn("dual_combine:=0", args)
 
+    def test_unified_runtime_keeps_vision_service_as_event_bridge_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            setup = folder / 'setup.bash'; setup.write_text(':\n')
+            ros2 = folder / 'ros2'; ros2.write_text('#!/bin/sh\nprintf \'%s\\n\' "$@"\n'); ros2.chmod(0o755)
+            env = {**os.environ, 'TROS_SETUP': str(setup), 'MUSE_PET_VISION_SETUP': str(setup),
+                   'MUSE_PET_TRANSPORT': 'shm', 'MUSE_PET_UNIFIED_RUNTIME': '1',
+                   'MUSE_PET_TRANSPORT_CONFIG': str(folder/'missing'),
+                   'PATH': str(folder)+os.pathsep+os.environ['PATH']}
+            result = subprocess.run(['bash', str(ROOT/'scripts/start-vision.sh')], env=env,
+                                    capture_output=True, text=True, check=True)
+            args = result.stdout.splitlines()
+            self.assertEqual(args[:3], ['run','muse_pet_vision','muse_pet_vision_node'])
+            self.assertIn('left_health_topic:=/muse/camera/left/health', args)
+            self.assertNotIn('launch', args)
+
     def test_empty_optional_argument_is_omitted_for_humble(self):
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)
@@ -34,7 +68,8 @@ class StartupTests(unittest.TestCase):
             ros2 = folder / "ros2"
             ros2.write_text("#!/bin/sh\nprintf '%s\\n' \"$@\"\n")
             ros2.chmod(0o755)
-            env = {**os.environ, "TROS_SETUP": str(setup),
+            env = {**os.environ, "TROS_SETUP": str(setup), "MUSE_PET_TRANSPORT": "udp",
+                   "MUSE_PET_TRANSPORT_CONFIG": str(folder / "missing.env"),
                    "MUSE_PET_VISION_SETUP": str(setup),
                    "PATH": str(folder) + os.pathsep + os.environ["PATH"]}
             for extra in ("", "world:/muse/world"):

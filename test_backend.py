@@ -20,6 +20,20 @@ class FakeBridge:
 
 
 class Tests(unittest.IsolatedAsyncioTestCase):
+    async def test_unchanged_state_skips_file_writes_but_keeps_heartbeat_and_immediate_changes(self):
+        with tempfile.TemporaryDirectory() as directory, patch("backend.RUNTIME", Path(directory)), \
+             patch("backend.time.monotonic", return_value=10.0) as clock:
+            bridge = Bridge()
+            state = Path(directory) / "state"
+            first = state.stat().st_ino
+            bridge.write_state()
+            self.assertEqual(state.stat().st_ino, first)
+            clock.return_value = 15.0
+            bridge.write_state()
+            self.assertNotEqual(state.stat().st_ino, first)
+            bridge.set_state(caption="new reply")
+            self.assertIn("caption=new reply\n", state.read_text())
+
     async def test_reply_ignores_other_parent_and_does_not_duplicate_final(self):
         s = object.__new__(ChatSession)
         s.bridge = FakeBridge()

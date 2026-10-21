@@ -1,0 +1,5 @@
+face=idle
+pet_mode=focus
+pet_timer=24:50
+page=face
+advance=1200

@@ -11,11 +11,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ros2_ws/src/muse_p
 from muse_pet_vision.adapter import (CameraHealthMonitor, FoodGate, PetVisionAdapter,
                                     StableGestureGate, UnixEventSink, select_stereo_topics)
 from muse_pet_vision.assets import prepare_yolo_config
-from muse_pet_vision.node import _best_gesture, _detections, message_is_fresh
+from muse_pet_vision.node import _best_gesture, _detections, message_is_fresh, health_topics
 from pet import PetEngine
 
 
 class VisionTests(unittest.TestCase):
+    def test_camera_health_selects_both_metadata_streams_without_raw_fallback(self):
+        pair, compact = health_topics("/left/raw", "/right/raw", "/left/health", "/right/health")
+        self.assertTrue(compact)
+        self.assertEqual((pair.left, pair.right), ("/left/health", "/right/health"))
+        pair, compact = health_topics("/left/raw", "/right/raw", "", "")
+        self.assertFalse(compact)
+        self.assertEqual(pair.left, "/left/raw")
+        with self.assertRaises(ValueError):
+            health_topics("/left/raw", "/right/raw", "/left/health", "")
+
     def test_discovery_requires_matched_types_and_namespace(self):
         image = ["sensor_msgs/msg/Image"]
         self.assertIsNone(select_stereo_topics({"/a/image_left_raw": image,
@@ -33,6 +43,17 @@ class VisionTests(unittest.TestCase):
         self.assertEqual(gate.observe(5, 1.4, 4), [])
         self.assertEqual(gate.observe(5, 3.0, 5), [])  # missing hand is not stable
         self.assertEqual(gate.observe(5, 3.3, 6)[0].kind, "palm")
+
+    def test_feed_and_play_require_a_deliberate_hold(self):
+        gate = StableGestureGate()
+        gate.observe(11, 1., 1)
+        self.assertEqual(gate.observe(11, 1.3, 2), [])
+        self.assertEqual(gate.observe(11, 1.5, 3), [])
+        result = gate.observe(11, 1.7, 4)
+        self.assertEqual(result[0].stable_ms, 600)
+        gate.observe(3, 1.8, 5)
+        self.assertEqual(gate.observe(3, 2.1, 6), [])
+        self.assertEqual(gate.observe(3, 2.5, 7)[0].kind, "victory")
 
     def test_food_confirmation_expires_between_sparse_frames(self):
         gate = FoodGate()
@@ -86,8 +107,9 @@ class VisionTests(unittest.TestCase):
             now[0] += .1
             emit(adapter.objects([{"label": "banana", "confidence": .9}], now[0], seq))
         emit(adapter.gesture(11, now[0], 8))
-        now[0] += .3
-        emit(adapter.gesture(11, now[0], 9))
+        for seq in range(9, 17):
+            now[0] += .1
+            emit(adapter.gesture(11, now[0], seq))
         self.assertEqual(pet.status()["mode"], "eating")
         pet.find("cup")
         now[0] += .1

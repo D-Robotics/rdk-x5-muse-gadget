@@ -1,0 +1,4 @@
+face=idle
+pet_mode=dancing
+page=face
+advance=1300

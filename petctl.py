@@ -38,7 +38,7 @@ def send_command(command: dict, path: Path | None = None) -> None:
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(prog="petctl", description="Control the Muse desktop pet")
     commands = result.add_subparsers(dest="command", required=True)
-    for name in ("wake", "sleep", "pet", "status"):
+    for name in ("wake", "sleep", "pet", "play", "dance", "stretch", "look", "status"):
         commands.add_parser(name)
 
     move = commands.add_parser("move")

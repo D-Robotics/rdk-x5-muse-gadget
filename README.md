@@ -33,8 +33,10 @@ source /opt/tros/setup.bash 2>/dev/null || source /opt/tros/humble/setup.bash
 ./scripts/start-camera.sh
 ```
 
-The launcher uses 1088×1280, realtime timestamps and UDP transport so the root
-camera process can communicate with the desktop user's perception service.
+The launcher uses 1088×1280 and realtime timestamps. UDP is the existing fallback;
+a shared-image mode connects the camera, rate limiter, models and JPEG codec
+using `HbmMsg1080P`. See [image transport](docs/PET-DEMO.md#shared-image-mode)
+for activation and validation limits.
 The pet uses the left image for perception and monitors both channels.
 
 The perception bridge is optional. It needs TROS Humble and `colcon`; gesture
@@ -56,12 +58,14 @@ To start the camera at boot too, stop any manually launched camera first, then
 run `sudo env INSTALL_PET_CAMERA=1 INSTALL_PET_VISION=1 bash install.sh`.
 Camera settings live in `/etc/default/muse-pet-camera`.
 
-For the small-screen recognition page and web preview, install with
-`sudo env INSTALL_PET_CAMERA=1 INSTALL_PET_VISION=1 INSTALL_PET_PREVIEW=1 bash install.sh`.
-This also requires the TROS `hobot_codec` and `websocket` packages. Open
+For the single-process camera/model runtime, Depth page and recognition preview, install with
+`sudo env INSTALL_PET_RUNTIME=1 bash install.sh`.
+This requires the installed TROS camera, hand/gesture, YOLO, StereoNet,
+`hobot_codec` and `websocket` packages. All camera capture and model inference
+run in one C++ process; changing pages only changes frame routing. Open
 `http://<X5-IP>:8000/TogetheROS/` for separate object and hand/gesture views.
-Enable the installed models in `/etc/default/muse-pet-vision` as described in
-[Pet demo](docs/PET-DEMO.md).
+The unified runtime uses the fixed camera/model preset documented in
+[Pet demo](docs/PET-DEMO.md#depth-page).
 
 A compatible microphone and speaker are needed for voice. The current plan uses a CTIA 3.5 mm TRRS microphone and a USB audio speaker. Set the recording device with `PULSE_SOURCE` and the playback device with `PULSE_SINK` in [muse-ui.service](muse-ui.service). The newly selected audio hardware has not been tested on the X5.
 
@@ -69,10 +73,17 @@ A compatible microphone and speaker are needed for voice. The current plan uses 
 
 - Tap the avatar to pet it. Hold the microphone icon to record; release to send.
 - Swipe left for the live recognition view. Tap **Controls** for feeding,
-  sleep, focus timer and find-object controls; **Vision** returns to the image.
+  play, stretching, sleep, focus and find-object controls; **Vision** returns to the image.
+- Swipe left once more for **Depth**. Depth inference runs only while this page is open;
+  gestures keep running. Model weights stay cached for quick reopening. See [depth setup](docs/PET-DEMO.md#depth-page).
 - Tap the speaker button to mute or unmute.
 - Tap **Desktop** or press **Esc** to close the window.
 - Double-click **Muse** on the desktop to reopen it.
+
+Control buttons return to the avatar. Play dances, Stretch yawns and reaches up,
+Look scans the room, and petting gives a quiet cuddle with hearts. Feed chews,
+Focus opens a book, and Find banana starts a searching animation. Finding
+finishes when YOLO reports the target; the animation alone does not detect it.
 
 Local pet commands use the same state machine as gestures and Muse actions:
 
@@ -81,12 +92,20 @@ petctl wake
 petctl move left
 petctl move stop
 petctl feed banana
+petctl play
+petctl stretch
+petctl look
 petctl timer start 25
 petctl status
 ```
 
-Palm wakes the pet; ThumbLeft/ThumbRight move it. Show a banana, then make
-an OK sign to feed it. ThumbUp pets it; Victory starts a banana search.
+Palm wakes the pet; ThumbLeft/ThumbRight move it. An OK sign feeds a virtual
+snack, or the banana currently detected by the camera. ThumbUp cheers it;
+Victory starts a dance. Hold OK or Victory for about a second.
+To pet it with an open hand, hold your palm still briefly, bring it closer,
+then pull it back before repeating. Keep the whole hand in view.
+Its eyes follow an open palm. Feeding and cuddling finish before another
+gesture can switch activities; touchscreen commands can interrupt them.
 These local actions work without Muse internet access. Voice still uses Muse
 and requires permission to run commands on the paired Linux gadget.
 

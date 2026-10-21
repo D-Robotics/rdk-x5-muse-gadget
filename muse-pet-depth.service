@@ -1,0 +1,19 @@
+[Unit]
+Description=Muse depth page demand controller
+After=muse-ui.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/muse-ui
+RuntimeDirectory=muse-pet-depth
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=restart
+ExecStart=/bin/bash /opt/muse-ui/scripts/start-depth-controller.sh
+ExecStopPost=/usr/bin/systemctl stop muse-pet-depth-pipeline.service
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

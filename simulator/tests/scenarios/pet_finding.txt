@@ -1,0 +1,6 @@
+face=idle
+pet_mode=finding
+pet_find_state=searching
+pet_find_target=banana
+page=face
+advance=1200

@@ -44,6 +44,7 @@ enum {
     C_SHADOW,
     C_HEART,
     C_WHITE,
+    C_FOOD,
     C_COUNT,
 };
 
@@ -89,6 +90,7 @@ static const uint32_t FIXED[C_COUNT] = {
     [C_SHADOW] = 0x16101f,
     [C_HEART] = 0xff4f8b,
     [C_WHITE] = 0xffffff,
+    [C_FOOD] = 0xffd54f,
 };
 
 static rgb_t s_scheme[5];      /* live, blended: f0..f3, acc */
@@ -317,6 +319,11 @@ static float eyes_update(const muse_pose_t *p, float dt)
     }
 
     float tgx = e->tgx, tgy = e->tgy;
+    if (p->attentive && p->mode == MUSE_MODE_IDLE && !p->sleeping && !p->eating &&
+        !p->cuddling && !p->dancing && !p->stretching && !p->finding && !p->focusing && !p->curious) {
+        tgx = clampf(p->look_x, -1, 1) * .9f;
+        tgy = clampf(p->look_y, -1, 1) * .7f;
+    }
     switch (p->mode) {
     case MUSE_MODE_LISTENING:
         tgx = 0;
@@ -896,12 +903,25 @@ void muse_pixel_render(const muse_pose_t *p)
     float level = p->level;
     float t = p->t;
     bool local_pose = mode == MUSE_MODE_IDLE || mode == MUSE_MODE_ERROR;
-    if (local_pose && (p->sleeping || p->eating || p->moving)) {
+    if (local_pose && (p->sleeping || p->eating || p->moving ||
+                       p->finding || p->focusing || p->waking || p->cuddling ||
+                       p->dancing || p->stretching || p->curious)) {
         mode = MUSE_MODE_IDLE;
+        if (!p->waking) happy = 0;
     }
 
     update_palette(&SCHEMES[mode], dt);
     float blink = eyes_update(p, dt);
+    if (local_pose && p->finding) {
+        s_eyes.gx = sinf(t * 1.1f);
+        s_eyes.gy = -0.1f;
+    } else if (local_pose && p->focusing) {
+        s_eyes.gx = sinf(t * 2.0f) * 0.3f;
+        s_eyes.gy = 0.7f;
+    } else if (local_pose && p->curious) {
+        s_eyes.gx = sinf(p->action_t * 2.1f) * .9f;
+        s_eyes.gy = -.3f;
+    }
 
     memset(s_fb, C_BG, sizeof(s_fb));
 
@@ -929,9 +949,24 @@ void muse_pixel_render(const muse_pose_t *p)
     if (happy > 0) {
         hop = fabsf(sinf(t * 9.0f)) * 3.0f * happy;
     }
-    if (local_pose && p->moving) {
+    if (local_pose && (p->moving || p->finding)) {
         hop += fabsf(sinf(t * 8.0f)) * 2.0f;
         lean = sinf(t * 8.0f) * 0.7f;
+    }
+    if (local_pose && p->waking) hop += fabsf(sinf(t * 7)) * 3;
+    if (local_pose && p->sleeping) breathe_rate = 0.9f;
+    bool idle_wave = local_pose && !p->sleeping && !p->eating && !p->moving &&
+        !p->finding && !p->focusing && !p->waking && !p->cuddling && !p->dancing &&
+        !p->stretching && !p->curious && happy < .01f && fmodf(t, 24) > 18 && fmodf(t, 24) < 21;
+    if (local_pose && p->cuddling) {
+        lean = sinf(p->action_t * 3) * 1.4f;
+        bob = .3f;
+        hop = 0;
+    } else if (local_pose && p->dancing) {
+        lean = sinf(p->action_t * 5) * 2.2f;
+        hop = fabsf(sinf(p->action_t * 8)) * 4;
+    } else if (local_pose && p->curious) {
+        lean = s_eyes.gx * 1.5f;
     }
 
     /* Boot: the avatar pops up from a squash, then opens their eyes. */
@@ -943,6 +978,9 @@ void muse_pixel_render(const muse_pose_t *p)
     avatar_t j;
     j.a = 16.0f * (1 + breathe) * (2.0f - squash) + level * 0.8f;
     j.b = 23.0f * (1 - breathe) * squash;
+    float stretch = local_pose && p->stretching ? sinf(clampf(p->action_t / 3.5f, 0, 1) * 3.1416f) : 0;
+    j.a *= 1 - stretch * .12f;
+    j.b *= 1 + stretch * .09f;
     j.cx = 32.0f + lean;
     j.cy = 56.5f - j.b + bob * 0.5f - hop;   /* feet stay near the ground */
     j.fa = j.a * 0.66f;
@@ -970,6 +1008,8 @@ void muse_pixel_render(const muse_pose_t *p)
     float base = j.cy + j.b;
     limb_t feet[2];
     float step = mode == MUSE_MODE_SPEAKING ? sinf(t * 5.0f) * 0.6f : 0.0f;
+    if (local_pose && (p->moving || p->finding)) step = sinf(t * 8) * 1.8f;
+    if (local_pose && p->dancing) step = sinf(p->action_t * 8) * 2.5f;
     feet[0] = (limb_t){ j.cx - 7.0f, base - 0.5f + (happy > 0 ? hop * 0.3f : step), -0.15f };
     feet[1] = (limb_t){ j.cx + 7.0f, base - 0.5f + (happy > 0 ? hop * 0.3f : -step), 0.15f };
 
@@ -1012,6 +1052,23 @@ void muse_pixel_render(const muse_pose_t *p)
         }
         break;
     }
+    }
+    if (local_pose && p->waking)
+        arms[1] = (limb_t){ j.cx + adx, j.cy - 5, -2.3f + sinf(t * 14) * 0.4f };
+    if (local_pose && p->cuddling) {
+        arms[0] = (limb_t){ j.fx - j.fa + 1, j.fy + 6, 1.8f };
+        arms[1] = (limb_t){ j.fx + j.fa - 1, j.fy + 6, -1.8f };
+    } else if (local_pose && p->dancing) {
+        float wave = sinf(p->action_t * 8);
+        arms[0] = (limb_t){ j.cx - adx - 1, j.cy - 5 + wave * 4, 2 + wave * .6f };
+        arms[1] = (limb_t){ j.cx + adx + 1, j.cy - 5 - wave * 4, -2 + wave * .6f };
+    } else if (local_pose && p->stretching) {
+        arms[0] = (limb_t){ j.cx - adx + stretch * 5, j.cy - 3 - stretch * 12, 2.4f };
+        arms[1] = (limb_t){ j.cx + adx - stretch * 5, j.cy - 3 - stretch * 12, -2.4f };
+    } else if (local_pose && p->curious) {
+        arms[1] = (limb_t){ j.cx + 7.5f, j.fy + j.fb + 3.5f, -1.1f };
+    } else if (idle_wave) {
+        arms[1] = (limb_t){ j.cx + adx, j.cy - 5, -2.3f + sinf(t * 10) * .3f };
     }
     draw_avatar(&j, arms, feet);
 
@@ -1061,6 +1118,25 @@ void muse_pixel_render(const muse_pose_t *p)
         style = EYES_HAPPY;
         mouth = MOUTH_TALK;
         mouth_open = 0.2f + 0.6f * fabsf(sinf(t * 10.0f));
+    } else if (local_pose && p->finding) {
+        style = EYES_WIDE;
+        mouth = MOUTH_HMM;
+    } else if (local_pose && p->focusing) {
+        open *= 0.8f;
+        mouth = MOUTH_HMM;
+    } else if (local_pose && p->cuddling) {
+        style = EYES_HAPPY;
+        open = .7f;
+        mouth = MOUTH_SMILE;
+    } else if (local_pose && p->stretching) {
+        open *= 1 - stretch;
+        mouth = MOUTH_O;
+    } else if (local_pose && p->dancing) {
+        style = EYES_HAPPY;
+        mouth = MOUTH_GRIN;
+    } else if (local_pose && p->curious) {
+        style = EYES_WIDE;
+        mouth = MOUTH_HMM;
     }
 
     draw_eye(j.fx - eye_dx, eye_y, open, style, s_eyes.gx, s_eyes.gy);
@@ -1095,8 +1171,44 @@ void muse_pixel_render(const muse_pose_t *p)
     if (happy > 0) {
         draw_hearts(j.cx, top + 1, t, happy);
     }
+    if (local_pose && p->cuddling) draw_hearts(j.cx, top + 2, t * .6f, .9f);
+    if (local_pose && p->curious) {
+        static const char *const QUESTION[] = { "###", "..#", ".##", ".#.", "...", ".#." };
+        stamp(QUESTION, 6, iround(j.cx + 18), iround(top + 1), C_ACC, C_ACC);
+    }
+    if (local_pose && p->dancing) {
+        static const char *const NOTE[] = { ".###", ".#.#", ".#..", "##..", "##.." };
+        stamp(NOTE, 5, iround(j.cx - 23), iround(top + 8 + sinf(t * 3) * 3), C_ACC, C_ACC);
+        stamp(NOTE, 5, iround(j.cx + 21), iround(top + 3 - sinf(t * 3) * 3), C_HEART, C_HEART);
+    }
     if (mode == MUSE_MODE_ERROR) {
         draw_alert(iround(j.cx + 18), iround(top - 1));
+    }
+
+    if (local_pose && p->finding) {
+        int mx = iround(j.cx + 14), my = iround(j.fy + 6 + sinf(t * 3));
+        for (int y = -5; y <= 5; ++y)
+            for (int x = -5; x <= 5; ++x) {
+                int r = x*x + y*y;
+                if (r >= 16 && r <= 27) px(mx+x, my+y, C_ACC);
+                else if (r < 16 && x+y < -2) px(mx+x, my+y, C_SHINE);
+            }
+        for (int i = 3; i < 8; ++i) {
+            px(mx+i, my+i, C_OUT);
+            px(mx+i+1, my+i, C_ACC);
+        }
+    } else if (local_pose && p->focusing) {
+        static const char *const BOOK[] = {
+            "###########", "#oooo#oooo#", "#o##o#o##o#", "#oooo#oooo#",
+            "#o##o#o##o#", "#oooo#oooo#", "#####.#####" };
+        stamp(BOOK, 7, iround(j.cx)-5, iround(j.cy+7+sinf(t*2)*0.5f), C_ACC, C_SKINL);
+    } else if (local_pose && p->eating) {
+        static const char *const BANANA[] = {
+            "#.......", "##......", ".##.....", ".###...#", "..######", "...####." };
+        stamp(BANANA, 6, iround(j.cx+8), iround(j.fy+6+fabsf(sinf(t*5))*3), C_FOOD, C_FOOD);
+    } else if (local_pose && p->sleeping) {
+        static const char *const ZED[] = { "###", "..#", ".#.", "#..", "###" };
+        stamp(ZED, 5, iround(j.cx+15), iround(top+3-sinf(t)*2), C_ACC, C_ACC);
     }
 
 }

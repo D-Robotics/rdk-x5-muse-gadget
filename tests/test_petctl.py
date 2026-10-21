@@ -20,6 +20,8 @@ class PetctlTests(unittest.TestCase):
         self.assertEqual(self.parse("timer", "start", "1.5")["minutes"], 1.5)
         self.assertEqual(self.parse("timer", "cancel")["operation"], "cancel")
         self.assertEqual(self.parse("find", "cup")["target"], "cup")
+        for action in ("play", "dance", "stretch", "look"):
+            self.assertEqual(self.parse(action)["command"], action)
 
     def test_status_only_returns_pet_fields(self):
         with tempfile.TemporaryDirectory() as directory:

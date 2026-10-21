@@ -8,5 +8,8 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>hbm_img_msgs</depend>
+  <test_depend>python3</test_depend>
   <export><build_type>ament_cmake</build_type></export>
 </package>

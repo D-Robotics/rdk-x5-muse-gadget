@@ -6,14 +6,15 @@ import time
 from typing import Any
 
 from .adapter import PetVisionAdapter, TopicPair, UnixEventSink, select_stereo_topics
+from .gesture_input import hand_only
 
 
 try:
     import rclpy
     from ai_msgs.msg import PerceptionTargets
     from rclpy.node import Node
-    from rclpy.qos import qos_profile_sensor_data
-    from sensor_msgs.msg import Image
+    from rclpy.qos import QoSProfile, ReliabilityPolicy
+    from sensor_msgs.msg import CameraInfo, Image
 except ImportError as exc:  # Keep the pure adapter importable on non-ROS hosts.
     rclpy = None
     _ROS_IMPORT_ERROR = exc
@@ -101,6 +102,15 @@ def message_is_fresh(message: Any, now_ns: int, max_age_sec: float = 1.0) -> boo
     return -500_000_000 <= now_ns - stamp <= max_age_sec * 1_000_000_000
 
 
+def health_topics(left: str, right: str, compact_left: str,
+                  compact_right: str) -> tuple[TopicPair, bool]:
+    if bool(compact_left) != bool(compact_right):
+        raise ValueError("Both compact camera health topics must be supplied")
+    if compact_left:
+        return TopicPair(compact_left, compact_right), True
+    return TopicPair(left, right), False
+
+
 if rclpy is not None:
 
     class MusePetVisionNode(Node):
@@ -110,7 +120,11 @@ if rclpy is not None:
             super().__init__("muse_pet_vision")
             self.declare_parameter("left_topic", "/image_left_raw")
             self.declare_parameter("right_topic", "/image_right_raw")
+            self.declare_parameter("left_health_topic", "")
+            self.declare_parameter("right_health_topic", "")
             self.declare_parameter("gesture_topic", "/muse/gestures")
+            self.declare_parameter("hand_landmark_topic", "")
+            self.declare_parameter("gesture_input_topic", "")
             self.declare_parameter("object_topic", "/muse/objects")
             self.declare_parameter("extra_detector_topics", "")
             self.declare_parameter("socket_path", "/run/muse-ui/input.sock")
@@ -125,9 +139,10 @@ if rclpy is not None:
             self.declare_parameter("object_required_hits", 3)
             self.declare_parameter("food_ttl_sec", 1.0)
 
-            self._preferred_pair = TopicPair(
-                self._text("left_topic"), self._text("right_topic")
-            )
+            self._preferred_pair, self._compact_health = health_topics(
+                self._text("left_topic"), self._text("right_topic"),
+                self._text("left_health_topic"), self._text("right_health_topic"))
+            self._image_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
             self._adapter = PetVisionAdapter(
                 camera_stale_after=self._number("camera_stale_sec"),
                 gesture_stable_for=self._number("gesture_stable_sec"),
@@ -140,6 +155,19 @@ if rclpy is not None:
             )
             self._sink = UnixEventSink(self._text("socket_path"))
             self._last_sink_warning = 0.0
+            self._left_size = (0, 0)
+            self._last_hand_report = 0.0
+            self._hand_stats = dict(frames=0, targets=0, hands=0, valid=0, rejected=0)
+            self._hand_sub = None
+            self._hand_pub = None
+            hand_topic = self._text("hand_landmark_topic")
+            input_topic = self._text("gesture_input_topic")
+            if bool(hand_topic) != bool(input_topic) or (hand_topic and hand_topic == input_topic):
+                raise ValueError("Hand landmark and gesture input topics must be distinct and supplied together")
+            if hand_topic:
+                self._hand_pub = self.create_publisher(PerceptionTargets, input_topic, 10)
+                self._hand_sub = self.create_subscription(
+                    PerceptionTargets, hand_topic, self._on_hand_landmarks, 10)
             self._left_sub = None
             self._right_sub = None
             self._image_pair: TopicPair | None = None
@@ -201,21 +229,23 @@ if rclpy is not None:
             if self._right_sub is not None:
                 self.destroy_subscription(self._right_sub)
             self._left_sub = self.create_subscription(
-                Image,
+                CameraInfo if self._compact_health else Image,
                 pair.left,
                 lambda message: self._on_image("left", message),
-                qos_profile_sensor_data,
+                self._image_qos,
             )
             self._right_sub = self.create_subscription(
-                Image,
+                CameraInfo if self._compact_health else Image,
                 pair.right,
                 lambda message: self._on_image("right", message),
-                qos_profile_sensor_data,
+                self._image_qos,
             )
             self._image_pair = pair
             self.get_logger().info(f"Stereo image topics: {pair.left}, {pair.right}")
 
         def _discover_topics(self) -> None:
+            if self._compact_health:
+                return  # Never replace a metadata stream with raw pixel messages.
             if (
                 self._image_pair is not None
                 and self.count_publishers(self._image_pair.left) > 0
@@ -239,6 +269,8 @@ if rclpy is not None:
             fallback = self._clock_ns()
             if not message_is_fresh(message, fallback):
                 return
+            if eye == "left":
+                self._left_size = (int(message.width), int(message.height))
             self._emit(
                 self._adapter.image(
                     eye,
@@ -246,15 +278,34 @@ if rclpy is not None:
                     _stamp_ns(message, fallback),
                     int(message.width),
                     int(message.height),
-                    str(message.encoding),
+                    str(getattr(message, "encoding", "camera_info")),
                 )
             )
+
+        def _on_hand_landmarks(self, message: Any) -> None:
+            if not message_is_fresh(message, self._clock_ns()):
+                return
+            normalized, stats = hand_only(message)
+            self._hand_pub.publish(normalized)
+            self._hand_stats["frames"] += 1
+            for key, value in stats.items():
+                self._hand_stats[key] += value
+            now = time.monotonic()
+            if now - self._last_hand_report >= 5.0:
+                self.get_logger().info(f"Gesture input (interval totals): {self._hand_stats}")
+                self._hand_stats = dict.fromkeys(self._hand_stats, 0)
+                self._last_hand_report = now
 
         def _on_gesture(self, message: Any) -> None:
             now = time.monotonic()
             if not message_is_fresh(message, self._clock_ns()):
                 return
             stamp_ns = _stamp_ns(message, self._clock_ns())
+            motion_events = self._adapter.hand_motion(message, *self._left_size, now, stamp_ns)
+            for event in motion_events:
+                if event["event"]["type"] == "gesture":
+                    self.get_logger().info(f"Palm approach: {event['event']}")
+            self._emit(motion_events)
             value, track_id, confidence = _best_gesture(message)
             self._emit(
                 self._adapter.gesture(

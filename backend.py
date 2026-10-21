@@ -259,6 +259,8 @@ class Bridge:
         self.record_task = None
         self.turn_task = None
         self.player = None
+        self._written_state = None
+        self._written_at = 0.0
         self.write_state()
 
     def write_state(self):
@@ -267,10 +269,16 @@ class Bridge:
         values = dict(self.state)
         # LVGL captions have a 400-byte buffer; don't split a CJK code point.
         values["caption"] = str(values["caption"]).encode("utf-8")[:380].decode("utf-8", errors="ignore")
-        temp.write_text("".join(f"{k}={str(v).replace(chr(10), ' ').replace(chr(13), ' ')}\n"
-                                for k, v in values.items()), encoding="utf-8")
+        payload = "".join(f"{k}={str(v).replace(chr(10), ' ').replace(chr(13), ' ')}\n"
+                          for k, v in values.items())
+        now = time.monotonic()
+        # Keep a liveness heartbeat, but don't replace an unchanged file at 10 Hz.
+        if payload == self._written_state and now - self._written_at < 5.0:
+            return
+        temp.write_text(payload, encoding="utf-8")
         temp.chmod(0o644)
         temp.replace(RUNTIME / "state")
+        self._written_state, self._written_at = payload, now
 
     def set_state(self, **values):
         self.state.update(values)
