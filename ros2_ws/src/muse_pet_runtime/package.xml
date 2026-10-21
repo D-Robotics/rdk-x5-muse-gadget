@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>muse_pet_runtime</name><version>0.1.0</version>
+  <description>Single-process GS130WI capture and Muse BPU model runtime.</description>
+  <maintainer email="shockley6668@users.noreply.github.com">RDK X5 Muse Gadget contributors</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend><depend>rclcpp_components</depend><depend>class_loader</depend>
+  <depend>ament_index_cpp</depend><depend>sensor_msgs</depend><depend>std_msgs</depend>
+  <depend>ai_msgs</depend><depend>hbm_img_msgs</depend><depend>dnn_node</depend>
+  <exec_depend>mipi_cam</exec_depend><exec_depend>hobot_stereonet</exec_depend>
+  <exec_depend>mono2d_body_detection</exec_depend><exec_depend>dnn_node_example</exec_depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>

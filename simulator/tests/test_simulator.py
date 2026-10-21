@@ -19,14 +19,19 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 from pathlib import Path
 import subprocess
+import socket
 import tempfile
+import struct
+import time
 
 WIDTH, HEIGHT = 480, 320
 HERE = Path(__file__).resolve().parent
-SCENARIOS = tuple(sorted((HERE / "scenarios").glob("*.txt")))
+SCENARIOS = tuple(sorted(path for path in (HERE / "scenarios").glob("*.txt")
+                         if not path.name.startswith(".")))
 
 
 def read_ppm(path: Path) -> bytes:
@@ -89,7 +94,7 @@ def main() -> None:
         assert recovered == hashes["listening"], "Off prevented the next preview state"
 
         invalid = tmp_path / "invalid.txt"
-        for setting in ("face=definitely-not-a-mode", "level=nan"):
+        for setting in ("face=definitely-not-a-mode", "level=nan", "pet_x=101", "pet_look_x=101", "pet_hand_present=maybe"):
             invalid.write_text(f"{setting}\n")
             proc = subprocess.run(
                 [str(binary), "--headless", "--scenario", str(invalid)],
@@ -100,6 +105,101 @@ def main() -> None:
             )
             assert proc.returncode == 2
             assert "unsupported or invalid setting" in proc.stderr
+
+        # Real SDL pointer input must pet the avatar without recording audio.
+        # Hold/release on the microphone must generate start/stop instead.
+        with tempfile.TemporaryDirectory(dir="/tmp", prefix="mui-") as runtime:
+            preview = Path(runtime) / "vision.bmp"
+            pixels = b'\x00\x00\xff' * (480 * 320)
+            preview.write_bytes(struct.pack('<2sIHHI', b'BM', 54 + len(pixels), 0, 0, 54) +
+                struct.pack('<IiiHHIIiiII', 40, 480, 320, 1, 24, 0, len(pixels), 0, 0, 0, 0) + pixels)
+            vision = tmp_path / "vision.txt"
+            vision.write_text('face=idle\npage=vision\nadvance=500\n')
+            for stale in (False, True):
+                if stale:
+                    os.utime(preview, (time.time() - 5, time.time() - 5))
+                screenshot = tmp_path / f"vision-{stale}.ppm"
+                proc = subprocess.run([str(binary), '--headless', '--scenario', str(vision),
+                    '--screenshot', str(screenshot)], env={**os.environ, 'MUSE_UI_RUNTIME': runtime},
+                    capture_output=True, text=True, timeout=10)
+                assert proc.returncode == 0, proc.stderr
+                assert (Path(runtime) / "muse-preview.active").is_file(), "Vision did not request frames"
+                pixel = read_ppm(screenshot)[(100 * WIDTH + 20) * 3: (100 * WIDTH + 20) * 3 + 3]
+                is_red = pixel[0] > 200 and pixel[1] < 20 and pixel[2] < 20
+                assert is_red != stale, ('native preview stale handling', stale, pixel)
+                if not stale:
+                    bottom = read_ppm(screenshot)[(310 * WIDTH + 240) * 3: (310 * WIDTH + 240) * 3 + 3]
+                    assert bottom[0] > 200 and bottom[1] < 20, 'Preview did not use full screen height'
+            vision.write_text('face=idle\npage=vision\nadvance=500\npage=face\nadvance=500\n')
+            proc = subprocess.run([str(binary), '--headless', '--scenario', str(vision)],
+                env={**os.environ, 'MUSE_UI_RUNTIME': runtime}, capture_output=True, text=True, timeout=10)
+            assert proc.returncode == 0, proc.stderr
+            assert not (Path(runtime) / "muse-preview.active").exists(), "Hidden preview kept requesting frames"
+            depth = Path(runtime) / "depth.bmp"
+            depth.write_bytes(preview.read_bytes())
+            for stale in (False, True):
+                if stale: os.utime(depth, (time.time() - 5, time.time() - 5))
+                vision.write_text('face=idle\npage=depth\nadvance=500\n')
+                screenshot = tmp_path / f"depth-{stale}.ppm"
+                proc = subprocess.run([str(binary), '--headless', '--scenario', str(vision),
+                    '--screenshot', str(screenshot)], env={**os.environ,
+                    'MUSE_UI_RUNTIME': runtime, 'MUSE_PET_DEPTH_RUNTIME': runtime},
+                    capture_output=True, text=True, timeout=10)
+                assert proc.returncode == 0, proc.stderr
+                assert (Path(runtime) / "muse-depth.active").exists(), "Depth did not request pipeline"
+                assert not (Path(runtime) / "muse-preview.active").exists(), "Depth requested Vision too"
+                pixel = read_ppm(screenshot)[(100 * WIDTH + 20) * 3: (100 * WIDTH + 20) * 3 + 3]
+                assert (pixel[0] > 200 and pixel[1] < 20) != stale, ('depth stale handling', stale, pixel)
+            vision.write_text('face=idle\npage=depth\nadvance=500\npage=vision\nadvance=500\n')
+            proc = subprocess.run([str(binary), '--headless', '--scenario', str(vision)],
+                env={**os.environ, 'MUSE_UI_RUNTIME': runtime}, capture_output=True, text=True, timeout=10)
+            assert proc.returncode == 0, proc.stderr
+            assert not (Path(runtime) / "muse-depth.active").exists(), "Hidden Depth kept running"
+            assert (Path(runtime) / "muse-preview.active").exists(), "Returning to Vision did not request video"
+            with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as receiver:
+                receiver.bind(str(Path(runtime) / "input.sock"))
+                receiver.settimeout(.1)
+                for x, y, page, expected in ((240, 160, "face", ["pet_command"]),
+                                       (340, 17, "face", ["start", "stop"]),
+                                       (240, 111, "pet", ["pet_command"])):
+                    touch = tmp_path / "touch.txt"
+                    touch.write_text(f"face=idle\naudio=true\npaired=true\npage={page}\nadvance=300\n"
+                                     f"touch_down={x},{y}\nadvance=650\n"
+                                     f"touch_up={x},{y}\nadvance=200\n")
+                    proc = subprocess.run([str(binary), "--headless", "--scenario", str(touch)],
+                        env={**os.environ, "MUSE_UI_RUNTIME": runtime},
+                        capture_output=True, text=True, timeout=10)
+                    assert proc.returncode == 0, proc.stderr
+                    actions = []
+                    while True:
+                        try:
+                            actions.append(json.loads(receiver.recv(4096))["action"])
+                        except socket.timeout:
+                            break
+                    assert actions == expected, (x, y, actions)
+
+                # Every control dispatches its command and returns to the pet
+                # so the action is visible, including from the second row.
+                for x, y, command in ((114, 111, "wake"), (240, 111, "feed"),
+                                      (366, 111, "play"), (114, 163, "look"),
+                                      (240, 163, "stretch"), (366, 163, "timer start 25"),
+                                      (114, 215, "find banana"), (240, 215, "sleep"),
+                                      (366, 215, "timer cancel")):
+                    touch.write_text(f"face=idle\npage=pet\nadvance=300\n"
+                                     f"touch_down={x},{y}\nadvance=150\n"
+                                     f"touch_up={x},{y}\nadvance=650\n")
+                    screenshot = tmp_path / "control-return.ppm"
+                    proc = subprocess.run([str(binary), "--headless", "--scenario", str(touch),
+                        "--screenshot", str(screenshot)],
+                        env={**os.environ, "MUSE_UI_RUNTIME": runtime},
+                        capture_output=True, text=True, timeout=10)
+                    assert proc.returncode == 0, proc.stderr
+                    message = json.loads(receiver.recv(4096))
+                    assert message == {"action": "pet_command", "command": command}, message
+                    pixels = read_ppm(screenshot)
+                    left = pixels[(302 * WIDTH + 224) * 3 + 2]
+                    right = pixels[(302 * WIDTH + 240) * 3 + 2]
+                    assert left > right, ("Control did not return to pet page", command)
 
     for name, digest in sorted(hashes.items()):
         print(f"{name}: {digest}")

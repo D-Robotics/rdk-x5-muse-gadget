@@ -1,0 +1,4 @@
+face=idle
+pet_mode=eating
+page=face
+advance=1200

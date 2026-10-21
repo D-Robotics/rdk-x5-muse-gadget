@@ -38,6 +38,19 @@ typedef struct {
     float mode_t;    /* seconds in current mode */
     float level;     /* 0..1 live audio level */
     float happy;     /* 0..1 pet reaction */
+    bool sleeping;
+    bool eating;
+    bool moving;
+    bool finding;
+    bool focusing;
+    bool waking;
+    bool cuddling;
+    bool dancing;
+    bool stretching;
+    bool curious;
+    bool attentive;
+    float look_x, look_y;
+    float action_t;
 } muse_pose_t;
 
 /* Accent colour of a mode (for the surrounding UI), as 0xRRGGBB. */

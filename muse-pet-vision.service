@@ -1,0 +1,37 @@
+[Unit]
+Description=Muse pet perception bridge
+Wants=network-online.target muse-ui.service
+After=network-online.target muse-ui.service
+ConditionPathExists=/opt/muse-ui/ros2_ws/install/setup.bash
+
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+WorkingDirectory=/opt/muse-ui
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=HOME=/home/sunrise
+Environment=ROS_LOG_DIR=/run/muse-pet-vision/log
+Environment=MUSE_PET_ASSET_CACHE=/run/muse-pet-vision/assets
+Environment=TMPDIR=/run/muse-pet-vision
+EnvironmentFile=-/etc/default/muse-pet-vision
+ExecStart=/opt/muse-ui/scripts/start-vision.sh
+RuntimeDirectory=muse-pet-vision
+RuntimeDirectoryMode=0750
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+KillMode=mixed
+UMask=0027
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/run/muse-ui /run/muse-pet-vision
+
+[Install]
+WantedBy=multi-user.target

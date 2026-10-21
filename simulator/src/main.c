@@ -46,6 +46,7 @@
 #include "sim_platform.h"
 #include "esp_timer.h"
 #include "sim_services.h"
+#include "sim_damage.h"
 
 #define FRAME_STEP_MS 5
 
@@ -54,6 +55,7 @@ static bool run_scenario(const char *, bool);
 static volatile sig_atomic_t s_quit;
 static int64_t s_last_poll;
 static bool s_live_state;
+static bool s_talk_active;
 static time_t s_state_mtime;
 static long s_state_nsec;
 
@@ -75,15 +77,45 @@ static void send_action(const char *action)
     close(fd);
 }
 
+static void send_pet_command(const char *command)
+{
+    int fd = socket(AF_UNIX, SOCK_DGRAM, 0);
+    if (fd < 0) return;
+    struct sockaddr_un addr = { .sun_family = AF_UNIX };
+    snprintf(addr.sun_path, sizeof(addr.sun_path), "%s/input.sock", runtime_dir());
+    char data[160];
+    snprintf(data, sizeof(data), "{\"action\":\"pet_command\",\"command\":\"%s\"}", command);
+    (void)sendto(fd, data, strlen(data), MSG_DONTWAIT, (struct sockaddr *)&addr, sizeof(addr));
+    close(fd);
+}
+
 
 void muse_backend_desktop(void)
 {
+    if (s_talk_active) {
+        s_talk_active = false;
+        send_action("stop");
+    }
     s_quit = 1;
 }
 
 void muse_backend_mute(void)
 {
     send_action("mute");
+}
+
+void muse_backend_talk(bool active)
+{
+    if (active == s_talk_active) return;
+    s_talk_active = active;
+    send_action(active ? "start" : "stop");
+}
+
+void muse_backend_pet_action(const char *action)
+{
+    if (action && *action) {
+        send_pet_command(action);
+    }
 }
 
 
@@ -113,7 +145,6 @@ static void poll_live_state(void)
 }
 
 static bool s_ready;
-static bool s_touch_recording;
 static float s_level;
 static float s_progress;
 static muse_power_t s_power = {
@@ -141,6 +172,10 @@ static void usage(FILE *out, const char *argv0)
             "  ble=off|advertising|connected         passkey=0..999999\n"
             "  paired=true|false  link=boot|unpaired|pairing|confirm|connecting|online|offline|error\n"
             "  speaker=true|false brightness=10..100 advance=MILLISECONDS\n"
+            "  pet_mode=MODE pet_x=-100..100 pet_hunger=0..100 pet_happiness=0..100\n"
+            "  pet_energy=0..100 pet_object=NAME pet_gesture=NAME pet_timer=TEXT\n"
+            "  pet_app=TEXT vision=TEXT\n"
+            "  page=face|vision|pet|depth touch_down=X,Y touch_up=X,Y\n"
             "\n"
             "Interactive keys: F1..F7 select face states, H is happy, Space is\n"
             "push-to-talk, +/- change level, [/] change progress, S sleeps,\n"
@@ -159,8 +194,9 @@ static void render_for(uint32_t duration_ms, bool real_time)
     uint32_t elapsed = 0;
     while (!s_quit && elapsed < duration_ms) {
         uint32_t step = duration_ms - elapsed;
-        if (step > FRAME_STEP_MS) {
-            step = FRAME_STEP_MS;
+        uint32_t max_step = real_time ? 20 : FRAME_STEP_MS;
+        if (step > max_step) {
+            step = max_step;
         }
         sim_time_advance_us((int64_t)step * 1000);
         if (s_live_state) poll_live_state();
@@ -194,7 +230,8 @@ static bool write_snapshot(const char *path)
         fprintf(stderr, "could not allocate simulator screenshot\n");
         return false;
     }
-    if (SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_RGB24, pixels,
+    if (!sim_damage_read_rgb(pixels, width, height) &&
+        SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_RGB24, pixels,
                              (int)row_bytes) != 0) {
         fprintf(stderr, "could not capture simulator screen: %s\n", SDL_GetError());
         free(pixels);
@@ -368,6 +405,30 @@ static bool apply_setting(const char *key, const char *value, bool real_time)
     bool flag;
     long number;
     float scalar;
+    if (!strcmp(key, "page")) {
+        if (!strcmp(value, "pet") || !strcmp(value, "vision")) {
+            sim_services_show_controls(!strcmp(value, "pet"));
+            muse_ui_show_settings();
+        }
+        else if (!strcmp(value, "face")) muse_ui_show_face();
+        else if (!strcmp(value, "depth")) muse_ui_show_depth();
+        else return false;
+        return true;
+    }
+    if (!strcmp(key, "touch_down") || !strcmp(key, "touch_up")) {
+        int x, y;
+        char extra;
+        if (sscanf(value, "%d,%d%c", &x, &y, &extra) != 2 ||
+            x < 0 || x >= 480 || y < 0 || y >= 320) return false;
+        SDL_Window *window = lv_sdl_window_get_window(sim_board_display());
+        SDL_Event event = {0};
+        event.type = !strcmp(key, "touch_down") ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP;
+        event.button.windowID = SDL_GetWindowID(window);
+        event.button.button = SDL_BUTTON_LEFT;
+        event.button.x = x;
+        event.button.y = y;
+        return SDL_PushEvent(&event) == 1;
+    }
     if (!strcmp(key, "face")) {
         return set_face(value);
     }
@@ -439,6 +500,14 @@ static bool apply_setting(const char *key, const char *value, bool real_time)
         sim_services_set_brightness((int)number);
         return true;
     }
+    if (!strcmp(key, "pet_x")) {
+        if (!parse_long(value, -100, 100, &number)) return false;
+        muse_state_set_pet_x((int)number);
+        return true;
+    }
+    if (!strncmp(key, "pet_", 4) || !strcmp(key, "vision")) {
+        return sim_services_set_pet_value(key, value);
+    }
     if (!strcmp(key, "advance") && parse_long(value, 0, 3600000, &number)) {
         render_for((uint32_t)number, real_time);
         return true;
@@ -499,25 +568,13 @@ static bool run_scenario(const char *path, bool real_time)
 
 static int event_watch(void *userdata, SDL_Event *event)
 {
+    sim_damage_event(event);
     (void)userdata;
-    if (s_ready && event->type == SDL_MOUSEBUTTONDOWN && event->button.button == SDL_BUTTON_LEFT
-        && event->button.x > 100 && event->button.x < 380
-        && event->button.y > 50 && event->button.y < 250) {
-        s_touch_recording = true;
-        send_action("start");
-        return 1;
-    }
-    if (s_ready && event->type == SDL_MOUSEBUTTONUP && s_touch_recording) {
-        s_touch_recording = false;
-        send_action("stop");
-        return 1;
-    }
-    if (s_ready && event->type == SDL_WINDOWEVENT
-        && event->window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
-        s_touch_recording = false;
-        send_action("stop");
+    if (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+        muse_backend_talk(false);
     }
     if (event->type == SDL_QUIT) {
+        muse_backend_talk(false);
         s_quit = 1;
         return 1;
     }
@@ -541,7 +598,7 @@ static int event_watch(void *userdata, SDL_Event *event)
         select_mode(MUSE_MODE_IDLE);
         muse_state_make_happy();
     } else if (key == SDLK_SPACE) {
-        send_action(down ? "start" : "stop");
+        muse_backend_talk(down);
     } else if (down && (key == SDLK_PLUS || key == SDLK_EQUALS || key == SDLK_KP_PLUS)) {
         s_level = s_level < 0.9f ? s_level + 0.1f : 1.0f;
         muse_state_set_level(s_level);
@@ -631,7 +688,7 @@ int main(int argc, char **argv)
     sim_services_set_link_state(MUSE_LINK_CONNECTING);
     sim_services_set_wifi(MUSE_WIFI_CONNECTING, "RDK X5");
     sim_services_set_ble(MUSE_BLE_OFF, "RDK X5", 0);
-    muse_state_set_caption("");
+    muse_state_set_caption("%s", "");
 
     if (scenario && !run_scenario(scenario, !headless)) {
         return 2;
@@ -642,8 +699,13 @@ int main(int argc, char **argv)
             return 1;
         }
     } else {
+        sim_time_use_realtime(true);
         while (!s_quit) {
-            render_for(FRAME_STEP_MS, true);
+            if (s_live_state) poll_live_state();
+            uint32_t next = lv_timer_handler();
+            /* Sleep until the next timer, retaining responsive touch input.
+             * Rendering time already advances the monotonic clock. */
+            SDL_Delay(next > 10 ? 10 : (next ? next : 1));
         }
     }
 

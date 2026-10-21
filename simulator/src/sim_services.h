@@ -18,6 +18,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "lvgl.h"
 
 #include "muse_ble.h"
 #include "muse_chat.h"
@@ -37,6 +38,14 @@ void sim_services_set_chat_status(muse_hatch_state_t state, const char *detail);
 void sim_services_set_link_state(muse_link_state_t state);
 void sim_services_set_brightness(int pct);
 void sim_services_set_speaker(bool on);
+bool sim_services_set_pet_value(const char *key, const char *value);
+const char *sim_services_pet_mode(void);
+const char *sim_services_pet_badge(void);
+bool sim_services_pet_active(void);
+bool sim_services_pet_attention(float *x, float *y);
+void sim_services_show_controls(bool controls);
+void sim_services_depth_build(lv_obj_t *tile);
+void sim_services_depth_tick(bool visible);
 
 void sim_services_set_audio(bool available);
 bool sim_services_audio_available(void);

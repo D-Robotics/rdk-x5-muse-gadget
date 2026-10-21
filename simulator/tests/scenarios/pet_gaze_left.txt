@@ -1,0 +1,7 @@
+face=idle
+pet_mode=idle
+pet_hand_present=true
+pet_look_x=-100
+pet_look_y=-20
+page=face
+advance=1300

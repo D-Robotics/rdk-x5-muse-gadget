@@ -147,6 +147,7 @@ set(MUSE_COMPONENT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../components/muse")
 add_executable(muse_simulator
     src/main.c
     src/sim_board.c
+    src/sim_damage.c
     src/sim_platform.c
     src/sim_services.c
     "${MUSE_COMPONENT_DIR}/muse_ui.c"
@@ -170,6 +171,14 @@ target_link_libraries(muse_simulator PRIVATE
 )
 
 target_link_libraries(muse_simulator PRIVATE m)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_package(X11 QUIET)
+    if(X11_FOUND)
+        target_compile_definitions(muse_simulator PRIVATE MUSE_X11_DAMAGE=1)
+        target_link_libraries(muse_simulator PRIVATE X11::X11)
+    endif()
+endif()
 
 if(APPLE)
     # SDL's Cocoa display and screensaver backends use IOKit even when its
@@ -196,6 +205,17 @@ if(MUSE_SIM_SANITIZERS)
 endif()
 
 include(CTest)
+if(BUILD_TESTING)
+    # The stream scheduler/copy contract is ROS-independent and can be tested
+    # on macOS too. The actual rclcpp node still needs the target ROS toolchain.
+    enable_language(CXX)
+    set(MUSE_STREAM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../ros2_ws/src/muse_pet_camera_throttle")
+    add_executable(muse_stream_budget_test "${MUSE_STREAM_DIR}/test/test_stream_budget.cpp")
+    target_include_directories(muse_stream_budget_test PRIVATE "${MUSE_STREAM_DIR}/include")
+    target_compile_features(muse_stream_budget_test PRIVATE cxx_std_17)
+    target_compile_options(muse_stream_budget_test PRIVATE -Wall -Wextra -Wpedantic)
+    add_test(NAME muse_stream_budget COMMAND muse_stream_budget_test)
+endif()
 if(BUILD_TESTING AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_simulator.py")
     find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
     add_test(

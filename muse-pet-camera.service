@@ -1,0 +1,22 @@
+[Unit]
+Description=Muse GS130WI dual-channel camera
+After=systemd-udev-settle.service
+Before=muse-pet-vision.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/muse-ui
+Environment=HOME=/root
+Environment=ROS_LOG_DIR=/run/muse-pet-camera/log
+EnvironmentFile=-/etc/default/muse-pet-camera
+EnvironmentFile=-/etc/default/muse-pet-depth-camera
+ExecStart=/opt/muse-ui/scripts/start-camera.sh
+RuntimeDirectory=muse-pet-camera
+RuntimeDirectoryMode=0755
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target

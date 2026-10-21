@@ -95,3 +95,7 @@ void muse_state_nudge(void);
 /* Touch/pet reaction. */
 void muse_state_make_happy(void);
 float muse_state_happiness(void);
+
+/* Horizontal pet position chosen by the local interaction engine, -100..100. */
+void muse_state_set_pet_x(int position);
+int muse_state_pet_x(void);

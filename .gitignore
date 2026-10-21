@@ -16,3 +16,5 @@ sdk_token
 
 .vscode/
 hardware/display/build/
+ros2_ws/install/
+ros2_ws/log/

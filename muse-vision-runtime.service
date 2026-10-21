@@ -1,0 +1,23 @@
+[Unit]
+Description=Muse single-process camera and BPU inference runtime
+After=systemd-udev-settle.service
+Before=muse-pet-vision.service muse-pet-preview.service
+Conflicts=muse-pet-camera.service muse-pet-depth.service muse-pet-depth-pipeline.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/run/muse-vision-runtime
+RuntimeDirectory=muse-vision-runtime
+RuntimeDirectoryMode=0755
+Environment=HOME=/root
+Environment=ROS_LOG_DIR=/run/muse-vision-runtime/log
+EnvironmentFile=-/etc/default/muse-pet-transport
+ExecStart=/bin/bash /opt/muse-ui/scripts/start-vision-runtime.sh
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target
